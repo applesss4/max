@@ -16,14 +16,6 @@ import {
 } from '@/services/workScheduleService'
 import { WorkSchedule, ShopHourlyRate, CreateWorkScheduleParams, CreateShopHourlyRateParams } from '@/services/workScheduleService'
 import html2canvas from 'html2canvas'
-import { 
-  applyExportImageStyles, 
-  applyExportTableStyles, 
-  applyExportHeaderStyles, 
-  applyExportCellStyles, 
-  applyExportTitleStyles, 
-  getOptimizedHtml2CanvasOptions 
-} from '@/utils/cssOptimizer'
 
 // 懒加载日历组件和图标组件
 const Calendar = lazy(() => import('react-calendar'))
@@ -45,6 +37,9 @@ export default function WorkSchedulePage() {
   const [shopRates, setShopRates] = useState<ShopHourlyRate[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<WorkSchedule | null>(null)
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewContent, setPreviewContent] = useState('');
+
   const [showSalaryForm, setShowSalaryForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [formData, setFormData] = useState({
@@ -319,94 +314,29 @@ export default function WorkSchedulePage() {
     return week
   }
 
-  // 导出排班表为图片
-  const exportScheduleToImage = async () => {
+  // 导出周排班表为CSV
+  const exportWeeklyScheduleAsCSV = async () => {
     try {
-      // 创建用于导出的临时元素
-      const exportElement = document.createElement('div')
-      exportElement.style.position = 'absolute'
-      exportElement.style.left = '-9999px'
-      exportElement.style.zIndex = '-1'
-      exportElement.style.backgroundColor = 'white'
-      exportElement.style.padding = '20px'
-      exportElement.style.fontFamily = 'sans-serif'
-      // 应用优化的导出样式
-      applyExportImageStyles(exportElement)
-      
       // 获取当前周的日期
       const weekDates = getWeekDates(selectedDate)
       
-      // 创建表格
-      const table = document.createElement('table')
-      // 应用优化的表格样式
-      applyExportTableStyles(table)
+      // 获取当前周的所有排班数据
+      const weekStart = new Date(weekDates[0])
+      const weekEnd = new Date(weekDates[6])
+      weekEnd.setHours(23, 59, 59, 999)
       
-      // 创建表头
-      const thead = document.createElement('thead')
-      const headerRow = document.createElement('tr')
+      const weekSchedules = schedules.filter(schedule => {
+        const scheduleDate = new Date(schedule.work_date)
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd
+      })
       
-      // 添加空的左上角单元格
-      const emptyHeader = document.createElement('th')
-      // 应用优化的表头样式
-      applyExportHeaderStyles(emptyHeader)
-      headerRow.appendChild(emptyHeader)
+      // 按日期分组排班数据
+      const schedulesByDate: Record<string, WorkSchedule[]> = {}
       
-      // 添加日期表头
       weekDates.forEach(date => {
-        const th = document.createElement('th')
-        // 应用优化的表头样式
-        applyExportHeaderStyles(th)
-        th.textContent = `${date.getMonth() + 1}/${date.getDate()} (${['日', '月', '火', '水', '木', '金', '土'][date.getDay()]})`
-        headerRow.appendChild(th)
+        const dateStr = formatDateForComparison(date)
+        schedulesByDate[dateStr] = weekSchedules.filter(s => s.work_date === dateStr)
       })
-      
-      thead.appendChild(headerRow)
-      table.appendChild(thead)
-      
-      // 创建表格主体
-      const tbody = document.createElement('tbody')
-      
-      // 按店铺分组排班数据
-      const schedulesByShop: Record<string, Record<string, WorkSchedule>> = {}
-      
-      // 初始化所有店铺和日期
-      const allShops = new Set(schedules.map(s => s.shop_name))
-      allShops.forEach(shop => {
-        schedulesByShop[shop] = {}
-        weekDates.forEach(date => {
-          const dateStr = formatDateForComparison(date)
-          const schedule = schedules.find(s => s.shop_name === shop && s.work_date === dateStr)
-          if (schedule) {
-            schedulesByShop[shop][dateStr] = schedule
-          }
-        })
-      })
-      
-      // 格式化时间，确保只显示小时和分钟 (HH:MM)
-      const formatTimeToHHMM = (time: string): string => {
-        // 如果时间格式已经是 HH:MM，则直接返回
-        if (/^\d{2}:\d{2}$/.test(time)) {
-          return time;
-        }
-        
-        // 如果包含秒 (HH:MM:SS)，则只取前5个字符
-        if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-          return time.substring(0, 5);
-        }
-        
-        // 如果是其他格式但包含冒号，尝试解析
-        if (time.includes(':')) {
-          const parts = time.split(':');
-          if (parts.length >= 2) {
-            const hours = parts[0].padStart(2, '0').substring(0, 2);
-            const minutes = parts[1].padStart(2, '0').substring(0, 2);
-            return `${hours}:${minutes}`;
-          }
-        }
-        
-        // 其他情况返回原始时间
-        return time;
-      };
       
       // 计算班次的白班和夜班工时，并考虑休息时间
       const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
@@ -434,7 +364,7 @@ export default function WorkSchedulePage() {
         // 计算与白班时间段的交集
         const workStartInDayShift = Math.max(startMinutes, dayShiftStart);
         const workEndInDayShift = Math.min(endMinutes, dayShiftEnd);
-        
+            
         if (workStartInDayShift < workEndInDayShift) {
           dayShiftMinutes = workEndInDayShift - workStartInDayShift;
         }
@@ -480,7 +410,7 @@ export default function WorkSchedulePage() {
             nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
           }
         }
-      
+        
         // 修正：如果工作时间完全在白班时间段内，则没有夜班时间
         if (startMinutes >= dayShiftStart && endMinutes <= dayShiftEnd) {
           nightShiftMinutes = 0;
@@ -543,114 +473,715 @@ export default function WorkSchedulePage() {
         return Math.round(totalSalary);
       };
       
-      // 计算本周总工资
+      // 计算本周总工资和总休息时长
       let totalWeeklySalary = 0;
-      // 计算本周总休息时长
       let totalWeeklyBreakHours = 0;
       
-      // 为每个店铺创建一行
-      Object.entries(schedulesByShop).forEach(([shopName, shopSchedules]) => {
-        const row = document.createElement('tr')
+      weekSchedules.forEach(schedule => {
+        const salary = calculateScheduleSalary(schedule);
+        totalWeeklySalary += salary;
+        totalWeeklyBreakHours += (schedule as any).break_duration || 0;
+      });
+      
+      // 构建CSV内容
+      let csvContent = '\uFEFF'; // 添加BOM以支持中文编码
+      csvContent += '店铺信息,上班时间,下班时间,当天工资\n';
+      
+      // 按日期顺序添加排班信息
+      weekDates.forEach(date => {
+        const dateStr = formatDateForComparison(date);
+        const schedulesForDate = schedulesByDate[dateStr] || [];
         
-        // 店铺名称列
-        const shopCell = document.createElement('td')
-        shopCell.style.fontWeight = 'bold'
-        // 应用优化的单元格样式
-        applyExportCellStyles(shopCell)
-        shopCell.textContent = shopName
-        row.appendChild(shopCell)
-        
-        // 为一周的每一天添加排班信息
-        weekDates.forEach(date => {
-          const dateStr = formatDateForComparison(date)
-          const schedule = shopSchedules[dateStr]
-          
-          const cell = document.createElement('td')
-          // 应用优化的单元格样式
-          applyExportCellStyles(cell)
-          
-          if (schedule) {
-            // 时间信息
-            const timeDiv = document.createElement('div')
-            const formattedStartTime = formatTimeToHHMM(schedule.start_time);
-            const formattedEndTime = formatTimeToHHMM(schedule.end_time);
-            timeDiv.textContent = `${formattedStartTime}-${formattedEndTime}`
-            // 设置时间信息字体颜色确保清晰可见
-            timeDiv.style.color = '#333333'
-            cell.appendChild(timeDiv)
-            
-            // 预计工资信息
+        if (schedulesForDate.length > 0) {
+          schedulesForDate.forEach(schedule => {
             const salary = calculateScheduleSalary(schedule);
-            const salaryDiv = document.createElement('div')
-            salaryDiv.textContent = `${salary}日元`
-            salaryDiv.style.fontSize = '12px'
-            salaryDiv.style.color = '#666666' // 使用深灰色确保清晰可见
-            salaryDiv.style.marginTop = '4px'
-            cell.appendChild(salaryDiv)
-            
-            // 累加工资到本周总计
-            totalWeeklySalary += salary;
-            // 累加休息时长到本周总计
-            totalWeeklyBreakHours += (schedule as any).break_duration || 0;
-          }
-          
-          row.appendChild(cell)
-        })
-        
-        tbody.appendChild(row)
-      })
+            csvContent += `"${schedule.shop_name}",${schedule.start_time},${schedule.end_time},${salary}\n`;
+          });
+        } else {
+          // 如果当天没有排班，添加休息标记
+          csvContent += `"休息",,,\n`;
+        }
+      });
       
-      table.appendChild(tbody)
-      exportElement.appendChild(table)
-      
-      // 添加本周预计工资总计
-      const totalSalaryDiv = document.createElement('div')
-      totalSalaryDiv.style.marginTop = '20px'
-      totalSalaryDiv.style.fontSize = '16px'
-      totalSalaryDiv.style.fontWeight = 'bold'
-      totalSalaryDiv.style.textAlign = 'right'
-      // 设置字体颜色确保清晰可见
-      totalSalaryDiv.style.color = '#333333'
-      totalSalaryDiv.textContent = `本周预计工资总计：${totalWeeklySalary}日元`
-      exportElement.appendChild(totalSalaryDiv)
-      
-      // 添加本周总休息时长
-      const totalBreakHoursDiv = document.createElement('div')
-      totalBreakHoursDiv.style.marginTop = '10px'
-      totalBreakHoursDiv.style.fontSize = '16px'
-      totalBreakHoursDiv.style.fontWeight = 'bold'
-      totalBreakHoursDiv.style.textAlign = 'right'
-      // 设置字体颜色确保清晰可见
-      totalBreakHoursDiv.style.color = '#333333'
-      totalBreakHoursDiv.textContent = `本周总休息時長：${totalWeeklyBreakHours.toFixed(1)}小时`
-      exportElement.appendChild(totalBreakHoursDiv)
-      
-      // 添加标题
-      const title = document.createElement('h2')
-      title.textContent = `排班表 - ${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日 至 ${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`
-      // 应用优化的标题样式
-      applyExportTitleStyles(title)
-      exportElement.insertBefore(title, table)
-      
-      document.body.appendChild(exportElement)
-      
-      // 使用html2canvas将元素转换为图片
-      const canvas = await html2canvas(exportElement, getOptimizedHtml2CanvasOptions())
-      
-      // 移除临时元素
-      document.body.removeChild(exportElement)
+      // 添加总计信息
+      csvContent += '\n';
+      csvContent += `本周预计总工资,${totalWeeklySalary}日元\n`;
+      csvContent += `本周休息時長,${totalWeeklyBreakHours.toFixed(1)}小时\n`;
       
       // 创建下载链接
-      const link = document.createElement('a')
-      link.download = `排班表_${new Date().getTime()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const fileName = `周排班表_${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日_至_${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日.csv`;
+      link.download = fileName;
+      link.href = URL.createObjectURL(blob);
+      link.click();
       
     } catch (error) {
-      console.error('导出排班表失败:', error)
-      alert('导出排班表失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      console.error('导出周排班表失败:', error);
+      alert('导出周排班表失败: ' + (error instanceof Error ? error.message : '未知错误'));
     }
   }
+
+  // 导出周排班表为图片
+  const exportWeeklyScheduleAsImage = async () => {
+    try {
+      // 获取当前周的日期
+      const weekDates = getWeekDates(selectedDate)
+      
+      // 获取当前周的所有排班数据
+      const weekStart = new Date(weekDates[0])
+      const weekEnd = new Date(weekDates[6])
+      weekEnd.setHours(23, 59, 59, 999)
+      
+      const weekSchedules = schedules.filter(schedule => {
+        const scheduleDate = new Date(schedule.work_date)
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd
+      })
+      
+      // 按日期分组排班数据
+      const schedulesByDate: Record<string, WorkSchedule[]> = {}
+      
+      weekDates.forEach(date => {
+        const dateStr = formatDateForComparison(date)
+        schedulesByDate[dateStr] = weekSchedules.filter(s => s.work_date === dateStr)
+      })
+      
+      // 获取本周所有店铺名称
+      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort()
+      
+      // 计算班次的白班和夜班工时，并考虑休息时间
+      const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
+        // 将时间转换为分钟数
+        const parseTimeToMinutes = (time: string): number => {
+          const [hours, minutes] = time.split(':').map(Number);
+          return hours * 60 + minutes;
+        };
+
+        let startMinutes = parseTimeToMinutes(startTime);
+        let endMinutes = parseTimeToMinutes(endTime);
+
+        // 处理跨天情况
+        if (endMinutes <= startMinutes) {
+          endMinutes += 24 * 60; // 加24小时
+        }
+
+        // 白班时间段：08:00-22:00 (480-1320分钟)
+        const dayShiftStart = 8 * 60;    // 08:00
+        const dayShiftEnd = 22 * 60;     // 22:00
+
+        let dayShiftMinutes = 0;
+        let nightShiftMinutes = 0;
+
+        // 计算与白班时间段的交集
+        const workStartInDayShift = Math.max(startMinutes, dayShiftStart);
+        const workEndInDayShift = Math.min(endMinutes, dayShiftEnd);
+            
+        if (workStartInDayShift < workEndInDayShift) {
+          dayShiftMinutes = workEndInDayShift - workStartInDayShift;
+        }
+
+        // 计算与夜班时间段的交集
+        // 夜班时间段：22:00-08:00，分为两部分：
+        // 1. 当天22:00-24:00 (1320-1440分钟)
+        const nightShiftStart1 = 22 * 60;  // 22:00
+        const nightShiftEnd1 = 24 * 60;    // 24:00
+        
+        const workStartInNightShift1 = Math.max(startMinutes, nightShiftStart1);
+        const workEndInNightShift1 = Math.min(endMinutes, nightShiftEnd1);
+        
+        if (workStartInNightShift1 < workEndInNightShift1) {
+          nightShiftMinutes += workEndInNightShift1 - workStartInNightShift1;
+        }
+        
+        // 2. 第二天00:00-08:00 (0-480分钟)
+        // 只有当工作时间跨天时才需要考虑这部分
+        if (endMinutes > 24 * 60) {
+          const nightShiftStart2 = 0;      // 00:00
+          const nightShiftEnd2 = 8 * 60;   // 08:00
+          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
+          
+          const workStartInNightShift2 = nightShiftStart2;
+          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
+          
+          if (workStartInNightShift2 < workEndInNightShift2) {
+            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
+          }
+        }
+      
+        // 如果工作时间从夜班开始（早于08:00），也需要考虑第二天的夜班部分
+        if (startMinutes < 8 * 60 && endMinutes > 24 * 60) {
+          const nightShiftStart2 = 0;      // 00:00
+          const nightShiftEnd2 = 8 * 60;   // 08:00
+          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
+          
+          const workStartInNightShift2 = nightShiftStart2;
+          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
+          
+          if (workStartInNightShift2 < workEndInNightShift2) {
+            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
+          }
+        }
+        
+        // 修正：如果工作时间完全在白班时间段内，则没有夜班时间
+        if (startMinutes >= dayShiftStart && endMinutes <= dayShiftEnd) {
+          nightShiftMinutes = 0;
+        }
+        
+        // 修正：如果工作时间完全在夜班时间段内（第一天の夜班22:00-24:00），则没有白班時間
+        if (startMinutes >= nightShiftStart1 && endMinutes <= nightShiftEnd1) {
+          dayShiftMinutes = 0;
+        }
+        
+        // 修正：如果工作时间完全在夜班时间段内（第二天の夜班00:00-08:00），则没有白班時間
+        if (endMinutes > 24 * 60 && startMinutes >= 24 * 60 && (endMinutes - 24 * 60) <= 8 * 60) {
+          const adjustedStartMinutes = startMinutes - 24 * 60;
+          const adjustedEndMinutes = endMinutes - 24 * 60;
+          if (adjustedStartMinutes >= 0 && adjustedEndMinutes <= 8 * 60) {
+            dayShiftMinutes = 0;
+          }
+        }
+
+        // 将分钟转换为小时
+        let dayShiftHours = dayShiftMinutes / 60;
+        let nightShiftHours = nightShiftMinutes / 60;
+
+        // 考虑休息时长的影响
+        // 修复：休息时长应该只从白班工时中扣除，而不是按比例分配到白班和夜班
+        if (breakDuration > 0) {
+          // 优先从白班工时中扣除休息时间
+          if (dayShiftHours >= breakDuration) {
+            // 如果白班工时足够扣除休息时间
+            dayShiftHours -= breakDuration;
+          } else {
+            // 如果白班工时不够扣除休息时间
+            // 先扣除所有白班工时
+            const remainingBreak = breakDuration - dayShiftHours;
+            dayShiftHours = 0;
+            
+            // 剩余的休息时间从夜班工时中扣除
+            nightShiftHours = Math.max(0, nightShiftHours - remainingBreak);
+          }
+        }
+
+        return {
+          dayShiftHours: dayShiftHours,
+          nightShiftHours: nightShiftHours
+        };
+      };
+      
+      // 计算单个排班的预计工资
+      const calculateScheduleSalary = (schedule: WorkSchedule) => {
+        const shopRate = shopRates.find(rate => rate.shop_name === schedule.shop_name);
+        const dayShiftRate = shopRate ? shopRate.day_shift_rate : 0;
+        const nightShiftRate = shopRate ? shopRate.night_shift_rate : 0;
+        
+        const breakDuration = (schedule as any).break_duration || 0;
+        const shiftHours = calculateShiftHours(schedule.start_time, schedule.end_time, breakDuration);
+        const dayShiftHours = shiftHours.dayShiftHours;
+        const nightShiftHours = shiftHours.nightShiftHours;
+        
+        const totalSalary = dayShiftHours * dayShiftRate + nightShiftHours * nightShiftRate;
+        return Math.round(totalSalary);
+      };
+      
+      // 计算本周总工资和总休息时长
+      let totalWeeklySalary = 0;
+      let totalWeeklyBreakHours = 0;
+      
+      weekSchedules.forEach(schedule => {
+        const salary = calculateScheduleSalary(schedule);
+        totalWeeklySalary += salary;
+        totalWeeklyBreakHours += (schedule as any).break_duration || 0;
+      });
+      
+      // 创建用于导出的隐藏表格元素
+      const exportContainer = document.createElement('div');
+      exportContainer.style.position = 'absolute';
+      exportContainer.style.left = '-9999px';
+      exportContainer.style.zIndex = '-1';
+      exportContainer.style.backgroundColor = '#f8f1eb';
+      exportContainer.style.padding = '20px';
+      exportContainer.style.fontFamily = 'sans-serif';
+      exportContainer.style.width = '1200px';
+      
+      // 创建表格HTML - 按照新要求重新设计
+      let tableHTML = `
+        <div style="background: linear-gradient(135deg, #f8f1eb 0%, #e8dcd3 100%); padding: 30px; font-family: 'Segoe UI', sans-serif; width: 1200px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 28px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">周排班表</h2>
+          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+            <thead>
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">店铺情報</th>
+      `;
+      
+      // 添加日期表头（星期、上班時間、下班時間、当天工资）
+      weekDates.forEach(date => {
+        const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+        tableHTML += `
+          <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 14px;">
+            ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
+          </th>
+        `;
+      });
+      
+      // 添加总计列
+      tableHTML += `
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">总计</th>
+              </tr>
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;"></th>
+      `;
+      
+      // 添加子表头（上班時間、下班時間、当天工资）
+      weekDates.forEach(() => {
+        tableHTML += `
+          <th style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; font-size: 12px;">
+            <div>上班時間</div>
+            <div>下班時間</div>
+            <div>当天工资</div>
+          </th>
+        `;
+      });
+      
+      // 添加总计子表头
+      tableHTML += `
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">工资</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      // 为每个店铺添加一行
+      shopNames.forEach((shopName, shopIndex) => {
+        const shopSchedules = weekSchedules.filter(schedule => schedule.shop_name === shopName);
+        let shopTotalSalary = 0;
+        
+        // 交替行背景色
+        const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
+        
+        tableHTML += `<tr style="border-bottom: 1px solid #d4c8c2; background-color: ${rowBgColor};">
+          <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600;">${shopName}</td>`;
+        
+        // 为每个日期添加排班信息
+        weekDates.forEach(date => {
+          const dateStr = formatDateForComparison(date);
+          const schedulesForDate = shopSchedules.filter(schedule => schedule.work_date === dateStr);
+          
+          if (schedulesForDate.length > 0) {
+            let cellContent = '';
+            let cellSalary = 0;
+            
+            // 只取第一个排班（通常一个店铺一天只有一个班次）
+            const schedule = schedulesForDate[0];
+            const salary = calculateScheduleSalary(schedule);
+            cellSalary += salary;
+            
+            cellContent = `
+              <div>${schedule.start_time}</div>
+              <div>${schedule.end_time}</div>
+              <div style="font-weight: 600; color: #a89383; margin-top: 5px;">${salary}</div>
+            `;
+            
+            shopTotalSalary += cellSalary;
+            tableHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; color: #5d504b;">${cellContent}</td>`;
+          } else {
+            tableHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; color: #a89383;">
+              <div>--:--</div>
+              <div>--:--</div>
+              <div style="font-weight: 600; color: #a89383; margin-top: 5px;">0</div>
+            </td>`;
+          }
+        });
+        
+        // 添加店铺总计
+        tableHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; color: #a89383;">${shopTotalSalary}</td>`;
+        tableHTML += `</tr>`;
+      });
+      
+      // 添加总计行
+      tableHTML += `
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white; font-weight: 600;">
+                <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">总计</td>
+      `;
+      
+      // 计算每天的总工资
+      let totalSalaryForAllDays = 0;
+      weekDates.forEach(date => {
+        const dateStr = formatDateForComparison(date);
+        const schedulesForDate = weekSchedules.filter(schedule => schedule.work_date === dateStr);
+        let dailyTotalSalary = 0;
+        
+        schedulesForDate.forEach(schedule => {
+          const salary = calculateScheduleSalary(schedule);
+          dailyTotalSalary += salary;
+        });
+        
+        totalSalaryForAllDays += dailyTotalSalary;
+        tableHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">${dailyTotalSalary}</td>`;
+      });
+      
+      tableHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">${totalSalaryForAllDays}</td>`;
+      tableHTML += `</tr>`;
+      
+      // 添加总计信息（本周预计总工资和本周休息时长）
+      tableHTML += `
+            </tbody>
+          </table>
+          <div style="margin-top: 25px; padding: 20px; background: linear-gradient(to right, #a89383, #8b7d77); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+              <div style="font-weight: 600; color: white; font-size: 18px;">本周预计总工资:</div>
+              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklySalary} 日元</div>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <div style="font-weight: 600; color: white; font-size: 18px;">本周休息时长:</div>
+              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklyBreakHours.toFixed(1)} 小时</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      exportContainer.innerHTML = tableHTML;
+      document.body.appendChild(exportContainer);
+      
+      // 使用html2canvas将表格转换为图片
+      const canvas = await html2canvas(exportContainer, {
+        scale: 2, // 提高图片质量
+        useCORS: true,
+        backgroundColor: '#f8f1eb'
+      });
+      
+      // 移除临时元素
+      document.body.removeChild(exportContainer);
+      
+      // 创建下载链接
+      const link = document.createElement('a');
+      const fileName = `周排班表_${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日_至_${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日.png`;
+      link.download = fileName;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+    } catch (error) {
+      console.error('导出周排班表图片失败:', error);
+      alert('导出周排班表图片失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
+
+  // 预览周排班表
+  const previewWeeklySchedule = async () => {
+    try {
+      // 获取当前周的日期
+      const weekDates = getWeekDates(selectedDate)
+      
+      // 获取当前周的所有排班数据
+      const weekStart = new Date(weekDates[0])
+      const weekEnd = new Date(weekDates[6])
+      weekEnd.setHours(23, 59, 59, 999)
+      
+      const weekSchedules = schedules.filter(schedule => {
+        const scheduleDate = new Date(schedule.work_date)
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd
+      })
+      
+      // 按日期分组排班数据
+      const schedulesByDate: Record<string, WorkSchedule[]> = {}
+      
+      weekDates.forEach(date => {
+        const dateStr = formatDateForComparison(date)
+        schedulesByDate[dateStr] = weekSchedules.filter(s => s.work_date === dateStr)
+      })
+      
+      // 获取本周所有店铺名称
+      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort()
+      
+      // 计算班次的白班和夜班工时，并考虑休息时间
+      const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
+        // 将时间转换为分钟数
+        const parseTimeToMinutes = (time: string): number => {
+          const [hours, minutes] = time.split(':').map(Number);
+          return hours * 60 + minutes;
+        };
+
+        let startMinutes = parseTimeToMinutes(startTime);
+        let endMinutes = parseTimeToMinutes(endTime);
+
+        // 处理跨天情况
+        if (endMinutes <= startMinutes) {
+          endMinutes += 24 * 60; // 加24小时
+        }
+
+        // 白班时间段：08:00-22:00 (480-1320分钟)
+        const dayShiftStart = 8 * 60;    // 08:00
+        const dayShiftEnd = 22 * 60;     // 22:00
+
+        let dayShiftMinutes = 0;
+        let nightShiftMinutes = 0;
+
+        // 计算与白班时间段的交集
+        const workStartInDayShift = Math.max(startMinutes, dayShiftStart);
+        const workEndInDayShift = Math.min(endMinutes, dayShiftEnd);
+            
+        if (workStartInDayShift < workEndInDayShift) {
+          dayShiftMinutes = workEndInDayShift - workStartInDayShift;
+        }
+
+        // 计算与夜班时间段的交集
+        // 夜班时间段：22:00-08:00，分为两部分：
+        // 1. 当天22:00-24:00 (1320-1440分钟)
+        const nightShiftStart1 = 22 * 60;  // 22:00
+        const nightShiftEnd1 = 24 * 60;    // 24:00
+        
+        const workStartInNightShift1 = Math.max(startMinutes, nightShiftStart1);
+        const workEndInNightShift1 = Math.min(endMinutes, nightShiftEnd1);
+        
+        if (workStartInNightShift1 < workEndInNightShift1) {
+          nightShiftMinutes += workEndInNightShift1 - workStartInNightShift1;
+        }
+        
+        // 2. 第二天00:00-08:00 (0-480分钟)
+        // 只有当工作时间跨天时才需要考虑这部分
+        if (endMinutes > 24 * 60) {
+          const nightShiftStart2 = 0;      // 00:00
+          const nightShiftEnd2 = 8 * 60;   // 08:00
+          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
+          
+          const workStartInNightShift2 = nightShiftStart2;
+          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
+          
+          if (workStartInNightShift2 < workEndInNightShift2) {
+            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
+          }
+        }
+      
+        // 如果工作时间从夜班开始（早于08:00），也需要考虑第二天的夜班部分
+        if (startMinutes < 8 * 60 && endMinutes > 24 * 60) {
+          const nightShiftStart2 = 0;      // 00:00
+          const nightShiftEnd2 = 8 * 60;   // 08:00
+          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
+          
+          const workStartInNightShift2 = nightShiftStart2;
+          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
+          
+          if (workStartInNightShift2 < workEndInNightShift2) {
+            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
+          }
+        }
+        
+        // 修正：如果工作时间完全在白班时间段内，则没有夜班时间
+        if (startMinutes >= dayShiftStart && endMinutes <= dayShiftEnd) {
+          nightShiftMinutes = 0;
+        }
+        
+        // 修正：如果工作时间完全在夜班时间段内（第一天の夜班22:00-24:00），则没有白班時間
+        if (startMinutes >= nightShiftStart1 && endMinutes <= nightShiftEnd1) {
+          dayShiftMinutes = 0;
+        }
+        
+        // 修正：如果工作时间完全在夜班时间段内（第二天の夜班00:00-08:00），则没有白班時間
+        if (endMinutes > 24 * 60 && startMinutes >= 24 * 60 && (endMinutes - 24 * 60) <= 8 * 60) {
+          const adjustedStartMinutes = startMinutes - 24 * 60;
+          const adjustedEndMinutes = endMinutes - 24 * 60;
+          if (adjustedStartMinutes >= 0 && adjustedEndMinutes <= 8 * 60) {
+            dayShiftMinutes = 0;
+          }
+        }
+
+        // 将分钟转换为小时
+        let dayShiftHours = dayShiftMinutes / 60;
+        let nightShiftHours = nightShiftMinutes / 60;
+
+        // 考虑休息时长的影响
+        // 修复：休息时长应该只从白班工时中扣除，而不是按比例分配到白班和夜班
+        if (breakDuration > 0) {
+          // 优先从白班工时中扣除休息时间
+          if (dayShiftHours >= breakDuration) {
+            // 如果白班工时足够扣除休息时间
+            dayShiftHours -= breakDuration;
+          } else {
+            // 如果白班工时不够扣除休息时间
+            // 先扣除所有白班工时
+            const remainingBreak = breakDuration - dayShiftHours;
+            dayShiftHours = 0;
+            
+            // 剩余的休息时间从夜班工时中扣除
+            nightShiftHours = Math.max(0, nightShiftHours - remainingBreak);
+          }
+        }
+
+        return {
+          dayShiftHours: dayShiftHours,
+          nightShiftHours: nightShiftHours
+        };
+      };
+      
+      // 计算单个排班的预计工资
+      const calculateScheduleSalary = (schedule: WorkSchedule) => {
+        const shopRate = shopRates.find(rate => rate.shop_name === schedule.shop_name);
+        const dayShiftRate = shopRate ? shopRate.day_shift_rate : 0;
+        const nightShiftRate = shopRate ? shopRate.night_shift_rate : 0;
+        
+        const breakDuration = (schedule as any).break_duration || 0;
+        const shiftHours = calculateShiftHours(schedule.start_time, schedule.end_time, breakDuration);
+        const dayShiftHours = shiftHours.dayShiftHours;
+        const nightShiftHours = shiftHours.nightShiftHours;
+        
+        const totalSalary = dayShiftHours * dayShiftRate + nightShiftHours * nightShiftRate;
+        return Math.round(totalSalary);
+      };
+      
+      // 计算本周总工资和总休息时长
+      let totalWeeklySalary = 0;
+      let totalWeeklyBreakHours = 0;
+      
+      weekSchedules.forEach(schedule => {
+        const salary = calculateScheduleSalary(schedule);
+        totalWeeklySalary += salary;
+        totalWeeklyBreakHours += (schedule as any).break_duration || 0;
+      });
+      
+      // 创建预览HTML - 按照新要求重新设计
+      let previewHTML = `
+        <div style="background: linear-gradient(135deg, #f8f1eb 0%, #e8dcd3 100%); padding: 30px; font-family: 'Segoe UI', sans-serif; width: 100%; max-width: 1200px; margin: 0 auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 28px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">周排班表预览</h2>
+          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+            <thead>
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">店铺情報</th>
+      `;
+      
+      // 添加日期表头（星期、上班時間、下班時間、当天工资）
+      weekDates.forEach(date => {
+        const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+        previewHTML += `
+          <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 14px;">
+            ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
+          </th>
+        `;
+      });
+      
+      // 添加总计列
+      previewHTML += `
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">总计</th>
+              </tr>
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;"></th>
+      `;
+      
+      // 添加子表头（上班時間、下班時間、当天工资）
+      weekDates.forEach(() => {
+        previewHTML += `
+          <th style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; font-size: 12px;">
+            <div>上班時間</div>
+            <div>下班時間</div>
+            <div>当天工资</div>
+          </th>
+        `;
+      });
+      
+      // 添加总计子表头
+      previewHTML += `
+                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">工资</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      // 为每个店铺添加一行
+      shopNames.forEach((shopName, shopIndex) => {
+        const shopSchedules = weekSchedules.filter(schedule => schedule.shop_name === shopName);
+        let shopTotalSalary = 0;
+        
+        // 交替行背景色
+        const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
+        
+        previewHTML += `<tr style="border-bottom: 1px solid #d4c8c2; background-color: ${rowBgColor};">
+          <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600;">${shopName}</td>`;
+        
+        // 为每个日期添加排班信息
+        weekDates.forEach(date => {
+          const dateStr = formatDateForComparison(date);
+          const schedulesForDate = shopSchedules.filter(schedule => schedule.work_date === dateStr);
+          
+          if (schedulesForDate.length > 0) {
+            let cellContent = '';
+            let cellSalary = 0;
+            
+            // 只取第一个排班（通常一个店铺一天只有一个班次）
+            const schedule = schedulesForDate[0];
+            const salary = calculateScheduleSalary(schedule);
+            cellSalary += salary;
+            
+            cellContent = `
+              <div>${schedule.start_time}</div>
+              <div>${schedule.end_time}</div>
+              <div style="font-weight: 600; color: #a89383; margin-top: 5px;">${salary}</div>
+            `;
+            
+            shopTotalSalary += cellSalary;
+            previewHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; color: #5d504b;">${cellContent}</td>`;
+          } else {
+            previewHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; color: #a89383;">
+              <div>--:--</div>
+              <div>--:--</div>
+              <div style="font-weight: 600; color: #a89383; margin-top: 5px;">0</div>
+            </td>`;
+          }
+        });
+        
+        // 添加店铺总计
+        previewHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; color: #a89383;">${shopTotalSalary}</td>`;
+        previewHTML += `</tr>`;
+      });
+      
+      // 添加总计行
+      previewHTML += `
+              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white; font-weight: 600;">
+                <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">总计</td>
+      `;
+      
+      // 计算每天的总工资
+      let totalSalaryForAllDays = 0;
+      weekDates.forEach(date => {
+        const dateStr = formatDateForComparison(date);
+        const schedulesForDate = weekSchedules.filter(schedule => schedule.work_date === dateStr);
+        let dailyTotalSalary = 0;
+        
+        schedulesForDate.forEach(schedule => {
+          const salary = calculateScheduleSalary(schedule);
+          dailyTotalSalary += salary;
+        });
+        
+        totalSalaryForAllDays += dailyTotalSalary;
+        previewHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">${dailyTotalSalary}</td>`;
+      });
+      
+      previewHTML += `<td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2;">${totalSalaryForAllDays}</td>`;
+      previewHTML += `</tr>`;
+      
+      // 添加总计信息（本周预计总工资和本周休息时长）
+      previewHTML += `
+            </tbody>
+          </table>
+          <div style="margin-top: 25px; padding: 20px; background: linear-gradient(to right, #a89383, #8b7d77); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+              <div style="font-weight: 600; color: white; font-size: 18px;">本周预计总工资:</div>
+              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklySalary} 日元</div>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <div style="font-weight: 600; color: white; font-size: 18px;">本周休息时長:</div>
+              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklyBreakHours.toFixed(1)} 小时</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      setPreviewContent(previewHTML);
+      setShowPreview(true);
+      
+    } catch (error) {
+      console.error('预览周排班表失败:', error);
+      alert('预览周排班表失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
 
   // 获取当前月份的排班数据
   const currentMonthSchedules = useMemo(() => {
@@ -986,11 +1517,18 @@ export default function WorkSchedulePage() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={exportScheduleToImage}
+                  onClick={previewWeeklySchedule}
                   className="px-3 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
-                  aria-label="导出排班表"
+                  aria-label="预览周排班表"
                 >
-                  导出排班
+                  预览周排班
+                </button>
+                <button
+                  onClick={exportWeeklyScheduleAsCSV}
+                  className="px-3 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
+                  aria-label="导出周排班表CSV"
+                >
+                  导出周排班(CSV)
                 </button>
                 <button
                   onClick={() => setShowSalaryForm(true)}
@@ -1264,6 +1802,35 @@ export default function WorkSchedulePage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* 预览模态框 */}
+        {showPreview && (
+          <div className="fixed inset-0 bg-cream-bg bg-opacity-80 flex justify-center items-center p-4 z-50 modal-backdrop">
+            <div className="bg-cream-card rounded-2xl shadow-lg p-6 w-full max-w-4xl border border-cream-border modal-fullscreen-mobile optimize-animation">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-cream-text-dark">排班表预览</h2>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={exportWeeklyScheduleAsImage}
+                    className="px-4 py-2 text-sm font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded-lg transition duration-300 mobile-optimized hover-effect"
+                  >
+                    导出为图片
+                  </button>
+                  <button
+                    onClick={() => setShowPreview(false)}
+                    className="text-cream-text-light hover:text-cream-text mobile-optimized hover-effect"
+                    aria-label="关闭预览"
+                  >
+                    <Suspense fallback={<span className="h-6 w-6" />}>
+                      <CloseIcon className="h-6 w-6" ariaHidden={false} />
+                    </Suspense>
+                  </button>
+                </div>
+              </div>
+              <div dangerouslySetInnerHTML={{ __html: previewContent }} />
             </div>
           </div>
         )}
@@ -1587,24 +2154,10 @@ const ScheduleItem = React.memo(({
   const formatTime = (time: string): string => {
     if (!time) return '';
     
-    // 如果已经是 HH:MM 格式，直接返回
-    if (/^\d{2}:\d{2}$/.test(time)) {
-      return time;
-    }
-    
-    // 如果包含秒 (HH:MM:SS)，则只取前5个字符
-    if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-      return time.substring(0, 5);
-    }
-    
-    // 如果是其他格式但包含冒号，尝试解析
-    if (time.includes(':')) {
-      const parts = time.split(':');
-      if (parts.length >= 2) {
-        const hours = parts[0].padStart(2, '0').substring(0, 2);
-        const minutes = parts[1].padStart(2, '0').substring(0, 2);
-        return `${hours}:${minutes}`;
-      }
+    // 统一格式化为 HH:MM 格式
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(time)) {
+      const [hours, minutes] = time.split(':');
+      return `${hours.padStart(2, '0')}:${minutes}`;
     }
     
     // 其他情况返回原始时间
