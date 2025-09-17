@@ -318,28 +318,20 @@ export default function WorkSchedulePage() {
   const exportWeeklyScheduleAsImage = async () => {
     try {
       // 获取当前周的日期
-      const weekDates = getWeekDates(selectedDate)
+      const weekDates = getWeekDates(selectedDate);
       
       // 获取当前周的所有排班数据
-      const weekStart = new Date(weekDates[0])
-      const weekEnd = new Date(weekDates[6])
-      weekEnd.setHours(23, 59, 59, 999)
+      const weekStart = new Date(weekDates[0]);
+      const weekEnd = new Date(weekDates[6]);
+      weekEnd.setHours(23, 59, 59, 999);
       
       const weekSchedules = schedules.filter(schedule => {
-        const scheduleDate = new Date(schedule.work_date)
-        return scheduleDate >= weekStart && scheduleDate <= weekEnd
-      })
-      
-      // 按日期分组排班数据
-      const schedulesByDate: Record<string, WorkSchedule[]> = {}
-      
-      weekDates.forEach(date => {
-        const dateStr = formatDateForComparison(date)
-        schedulesByDate[dateStr] = weekSchedules.filter(s => s.work_date === dateStr)
-      })
+        const scheduleDate = new Date(schedule.work_date);
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd;
+      });
       
       // 获取本周所有店铺名称
-      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort()
+      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort();
       
       // 计算班次的白班和夜班工时，并考虑休息时间
       const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
@@ -438,7 +430,6 @@ export default function WorkSchedulePage() {
         let nightShiftHours = nightShiftMinutes / 60;
 
         // 考虑休息时长的影响
-        // 修复：休息时长应该只从白班工时中扣除，而不是按比例分配到白班和夜班
         if (breakDuration > 0) {
           // 优先从白班工时中扣除休息时间
           if (dayShiftHours >= breakDuration) {
@@ -492,25 +483,25 @@ export default function WorkSchedulePage() {
       exportContainer.style.left = '-9999px';
       exportContainer.style.zIndex = '-1';
       exportContainer.style.backgroundColor = '#f8f1eb';
-      exportContainer.style.padding = '20px';
-      exportContainer.style.fontFamily = 'sans-serif';
-      exportContainer.style.width = '1200px';
+      exportContainer.style.padding = '30px';
+      exportContainer.style.fontFamily = 'Arial, sans-serif';
+      exportContainer.style.width = '1400px';
       
-      // 创建表格HTML - 按照新要求重新设计
+      // 构建表格HTML - 按照新要求重新设计
       let tableHTML = `
-        <div style="background: linear-gradient(135deg, #f8f1eb 0%, #e8dcd3 100%); padding: 30px; font-family: 'Segoe UI', sans-serif; width: 1200px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 28px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">周排班表</h2>
-          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+        <div style="background-color: #f8f1eb; padding: 30px; font-family: Arial, sans-serif; width: 1400px; border-radius: 15px;">
+          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 32px; font-weight: bold;">周排班表</h2>
+          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 20px;">
             <thead>
-              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
-                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">店铺情報</th>
+              <tr style="background-color: #a89383; color: white;">
+                <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">店铺情報</th>
       `;
       
       // 添加日期表头（星期）
       weekDates.forEach(date => {
         const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
         tableHTML += `
-          <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 14px;">
+          <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">
             ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
           </th>
         `;
@@ -527,22 +518,24 @@ export default function WorkSchedulePage() {
         // 交替行背景色
         const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
         
-        tableHTML += `<tr style="border-bottom: 1px solid #d4c8c2; background-color: ${rowBgColor};">
-          <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600;">${shopName}</td>`;
+        tableHTML += `<tr style="border-bottom: 2px solid #d4c8c2; background-color: ${rowBgColor};">
+          <td style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">${shopName}</td>`;
         
         // 为每个日期添加排班信息
         weekDates.forEach(date => {
           const dateStr = formatDateForComparison(date);
-          const schedulesForDate = weekSchedules.filter(schedule => schedule.work_date === dateStr);
+          const schedulesForDate = weekSchedules.filter(schedule => 
+            schedule.work_date === dateStr && schedule.shop_name === shopName
+          );
           
           if (schedulesForDate.length > 0) {
             // 只取第一个排班（通常一个店铺一天只有一个班次）
             const schedule = schedulesForDate[0];
-            tableHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; color: #5d504b;">
+            tableHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #5d504b;">
               ${schedule.start_time}<br/>${schedule.end_time}
             </td>`;
           } else {
-            tableHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; color: #a89383;">
+            tableHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #a89383;">
               休息
             </td>`;
           }
@@ -555,14 +548,16 @@ export default function WorkSchedulePage() {
       tableHTML += `
             </tbody>
           </table>
-          <div style="margin-top: 25px; padding: 20px; background: linear-gradient(to right, #a89383, #8b7d77); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-              <div style="font-weight: 600; color: white; font-size: 18px;">本周预计总工资:</div>
-              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklySalary} 日元</div>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <div style="font-weight: 600; color: white; font-size: 18px;">本周休息时长:</div>
-              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklyBreakHours.toFixed(1)} 小时</div>
+          <div style="margin-top: 30px; padding: 25px; background-color: #a89383; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: right;">
+            <div style="display: inline-block; text-align: left;">
+              <div style="font-weight: bold; color: white; font-size: 24px; margin-bottom: 15px;">
+                <span>本周预计总工资:</span>
+                <span style="margin-left: 20px;">${totalWeeklySalary} 日元</span>
+              </div>
+              <div style="font-weight: bold; color: white; font-size: 24px;">
+                <span>本周休息时长:</span>
+                <span style="margin-left: 20px;">${totalWeeklyBreakHours.toFixed(1)} 小时</span>
+              </div>
             </div>
           </div>
         </div>
@@ -575,7 +570,9 @@ export default function WorkSchedulePage() {
       const canvas = await html2canvas(exportContainer, {
         scale: 2, // 提高图片质量
         useCORS: true,
-        backgroundColor: '#f8f1eb'
+        backgroundColor: '#f8f1eb',
+        logging: false, // 禁用日志以提高性能
+        allowTaint: true
       });
       
       // 移除临时元素
@@ -585,7 +582,7 @@ export default function WorkSchedulePage() {
       const link = document.createElement('a');
       const fileName = `周排班表_${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日_至_${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日.png`;
       link.download = fileName;
-      link.href = canvas.toDataURL('image/png');
+      link.href = canvas.toDataURL('image/png', 1.0); // 使用最高质量
       link.click();
       
     } catch (error) {
@@ -598,28 +595,20 @@ export default function WorkSchedulePage() {
   const previewWeeklySchedule = async () => {
     try {
       // 获取当前周的日期
-      const weekDates = getWeekDates(selectedDate)
+      const weekDates = getWeekDates(selectedDate);
       
       // 获取当前周的所有排班数据
-      const weekStart = new Date(weekDates[0])
-      const weekEnd = new Date(weekDates[6])
-      weekEnd.setHours(23, 59, 59, 999)
+      const weekStart = new Date(weekDates[0]);
+      const weekEnd = new Date(weekDates[6]);
+      weekEnd.setHours(23, 59, 59, 999);
       
       const weekSchedules = schedules.filter(schedule => {
-        const scheduleDate = new Date(schedule.work_date)
-        return scheduleDate >= weekStart && scheduleDate <= weekEnd
-      })
-      
-      // 按日期分组排班数据
-      const schedulesByDate: Record<string, WorkSchedule[]> = {}
-      
-      weekDates.forEach(date => {
-        const dateStr = formatDateForComparison(date)
-        schedulesByDate[dateStr] = weekSchedules.filter(s => s.work_date === dateStr)
-      })
+        const scheduleDate = new Date(schedule.work_date);
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd;
+      });
       
       // 获取本周所有店铺名称
-      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort()
+      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort();
       
       // 计算班次的白班和夜班工时，并考虑休息时间
       const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
@@ -718,7 +707,6 @@ export default function WorkSchedulePage() {
         let nightShiftHours = nightShiftMinutes / 60;
 
         // 考虑休息时长的影响
-        // 修复：休息时长应该只从白班工时中扣除，而不是按比例分配到白班和夜班
         if (breakDuration > 0) {
           // 优先从白班工时中扣除休息时间
           if (dayShiftHours >= breakDuration) {
@@ -768,19 +756,19 @@ export default function WorkSchedulePage() {
       
       // 创建预览HTML - 按照新要求重新设计
       let previewHTML = `
-        <div style="background: linear-gradient(135deg, #f8f1eb 0%, #e8dcd3 100%); padding: 30px; font-family: 'Segoe UI', sans-serif; width: 100%; max-width: 1200px; margin: 0 auto; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 28px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">周排班表预览</h2>
-          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+        <div style="background-color: #f8f1eb; padding: 30px; font-family: Arial, sans-serif; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 15px;">
+          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 32px; font-weight: bold;">周排班表预览</h2>
+          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 20px;">
             <thead>
-              <tr style="background: linear-gradient(to right, #a89383, #8b7d77); color: white;">
-                <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 16px;">店铺情報</th>
+              <tr style="background-color: #a89383; color: white;">
+                <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">店铺情報</th>
       `;
       
       // 添加日期表头（星期）
       weekDates.forEach(date => {
         const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
         previewHTML += `
-          <th style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600; font-size: 14px;">
+          <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">
             ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
           </th>
         `;
@@ -797,22 +785,24 @@ export default function WorkSchedulePage() {
         // 交替行背景色
         const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
         
-        previewHTML += `<tr style="border-bottom: 1px solid #d4c8c2; background-color: ${rowBgColor};">
-          <td style="padding: 15px; text-align: center; border: 1px solid #d4c8c2; font-weight: 600;">${shopName}</td>`;
+        previewHTML += `<tr style="border-bottom: 2px solid #d4c8c2; background-color: ${rowBgColor};">
+          <td style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">${shopName}</td>`;
         
         // 为每个日期添加排班信息
         weekDates.forEach(date => {
           const dateStr = formatDateForComparison(date);
-          const schedulesForDate = weekSchedules.filter(schedule => schedule.work_date === dateStr);
+          const schedulesForDate = weekSchedules.filter(schedule => 
+            schedule.work_date === dateStr && schedule.shop_name === shopName
+          );
           
           if (schedulesForDate.length > 0) {
             // 只取第一个排班（通常一个店铺一天只有一个班次）
             const schedule = schedulesForDate[0];
-            previewHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; font-weight: 500; color: #5d504b;">
+            previewHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #5d504b;">
               ${schedule.start_time}<br/>${schedule.end_time}
             </td>`;
           } else {
-            previewHTML += `<td style="padding: 8px; text-align: center; border: 1px solid #d4c8c2; color: #a89383;">
+            previewHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #a89383;">
               休息
             </td>`;
           }
@@ -825,14 +815,16 @@ export default function WorkSchedulePage() {
       previewHTML += `
             </tbody>
           </table>
-          <div style="margin-top: 25px; padding: 20px; background: linear-gradient(to right, #a89383, #8b7d77); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-              <div style="font-weight: 600; color: white; font-size: 18px;">本周预计总工资:</div>
-              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklySalary} 日元</div>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <div style="font-weight: 600; color: white; font-size: 18px;">本周休息时长:</div>
-              <div style="font-weight: 700; color: white; font-size: 18px;">${totalWeeklyBreakHours.toFixed(1)} 小时</div>
+          <div style="margin-top: 30px; padding: 25px; background-color: #a89383; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: right;">
+            <div style="display: inline-block; text-align: left;">
+              <div style="font-weight: bold; color: white; font-size: 24px; margin-bottom: 15px;">
+                <span>本周预计总工资:</span>
+                <span style="margin-left: 20px;">${totalWeeklySalary} 日元</span>
+              </div>
+              <div style="font-weight: bold; color: white; font-size: 24px;">
+                <span>本周休息时长:</span>
+                <span style="margin-left: 20px;">${totalWeeklyBreakHours.toFixed(1)} 小时</span>
+              </div>
             </div>
           </div>
         </div>
