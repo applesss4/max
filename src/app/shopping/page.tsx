@@ -3,7 +3,7 @@
 import ProtectedRoute from '../../components/ProtectedRoute'
 import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { 
   getAllProductsWithPrices,
   getProductsByCategoryWithPrices,
@@ -39,6 +39,11 @@ export default function ShoppingPage() {
   const [priceComparison, setPriceComparison] = useState<{[key: string]: {priceDiff: number, shopName: string, isLower: boolean}} | null>(null) // 比价结果状态
   const [isPriceComparisonModalOpen, setIsPriceComparisonModalOpen] = useState(false) // 比价详情模态框状态
   const [latestOrderPrice, setLatestOrderPrice] = useState<{[key: string]: number}>({}) // 最新订单价格
+  // 搜索相关状态
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filteredProducts, setFilteredProducts] = useState<MergedProduct[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // 获取商品数据
   const fetchProducts = useCallback(async () => {
@@ -59,6 +64,7 @@ export default function ShoppingPage() {
       
       if (error) throw error
       setProducts(data || [])
+      setFilteredProducts(data || []) // 初始化过滤商品列表
     } catch (error) {
       console.error('获取商品失败:', error)
     } finally {
@@ -197,6 +203,30 @@ export default function ShoppingPage() {
     }
   }, [user]);
 
+  // 搜索商品
+  const handleSearch = useCallback(() => {
+    if (!searchTerm.trim()) {
+      setFilteredProducts(products)
+      setIsSearching(false)
+      return
+    }
+    
+    setIsSearching(true)
+    const term = searchTerm.toLowerCase().trim()
+    const filtered = products.filter(product => 
+      product.name.toLowerCase().includes(term) || 
+      product.description?.toLowerCase().includes(term) ||
+      product.category.toLowerCase().includes(term)
+    )
+    setFilteredProducts(filtered)
+    setIsSearching(false)
+  }, [searchTerm, products])
+
+  // 监听搜索词变化
+  useEffect(() => {
+    handleSearch()
+  }, [searchTerm, handleSearch])
+
   // 设置默认分类的副作用
   useEffect(() => {
     if (user) {
@@ -238,6 +268,12 @@ export default function ShoppingPage() {
       alert('添加到购物车失败')
     }
   }, [user])
+
+  // 清除搜索
+  const clearSearch = () => {
+    setSearchTerm('')
+    searchInputRef.current?.focus()
+  }
 
   return (
     <ProtectedRoute>
@@ -303,6 +339,35 @@ export default function ShoppingPage() {
 
         {/* 主内容区域 */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* 搜索框 */}
+          <div className="mb-4 relative">
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="搜索商品..."
+                className="w-full px-4 py-2 pl-10 pr-10 rounded-full border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-card text-cream-text-dark"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cream-text-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              {searchTerm && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cream-text-light hover:text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* 分类导航 */}
           <div className="mb-6 overflow-x-auto">
             <div className="flex space-x-2 pb-2">
@@ -336,19 +401,28 @@ export default function ShoppingPage() {
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mx-auto"></div>
                 <p className="mt-2 text-cream-text-dark">加载中...</p>
               </div>
-            ) : products.length === 0 ? (
+            ) : isSearching ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mx-auto"></div>
+                <p className="mt-2 text-cream-text-dark">搜索中...</p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-cream-border p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-cream-text-dark mb-2">暂无商品</h3>
-                <p className="text-cream-text-light">请稍后再试</p>
+                <h3 className="text-lg font-medium text-cream-text-dark mb-2">
+                  {searchTerm ? '未找到相关商品' : '暂无商品'}
+                </h3>
+                <p className="text-cream-text-light">
+                  {searchTerm ? '请尝试其他关键词' : '请稍后再试'}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 grid-gap-compact">
-                {products.map(product => (
+                {filteredProducts.map(product => (
                   <div 
                     key={`${product.name}-${product.category}`} 
                     className="border border-cream-border rounded-lg overflow-hidden hover:shadow-md transition duration-300 cursor-pointer"
@@ -436,7 +510,7 @@ export default function ShoppingPage() {
                           {priceComparison[product.name].isLower ? (
                             <>
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6 6" />
                               </svg>
                               <span className="truncate" title={`${priceComparison[product.name].shopName}`}>
                                 便宜了{Math.abs(priceComparison[product.name].priceDiff).toFixed(2)}元 ({priceComparison[product.name].shopName})
@@ -516,7 +590,7 @@ export default function ShoppingPage() {
                         ) : (
                           <>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6 6" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6-6" />
                             </svg>
                             <span>贵了 {Math.abs(comparison.priceDiff).toFixed(2)} 日元</span>
                           </>
