@@ -16,6 +16,14 @@ import {
 } from '@/services/workScheduleService'
 import { WorkSchedule, ShopHourlyRate, CreateWorkScheduleParams, CreateShopHourlyRateParams } from '@/services/workScheduleService'
 import html2canvas from 'html2canvas'
+import { 
+  applyExportImageStyles, 
+  applyExportTableStyles, 
+  applyExportHeaderStyles, 
+  applyExportCellStyles, 
+  applyExportTitleStyles, 
+  getOptimizedHtml2CanvasOptions 
+} from '@/utils/cssOptimizer'
 
 // 懒加载日历组件和图标组件
 const Calendar = lazy(() => import('react-calendar'))
@@ -322,15 +330,16 @@ export default function WorkSchedulePage() {
       exportElement.style.backgroundColor = 'white'
       exportElement.style.padding = '20px'
       exportElement.style.fontFamily = 'sans-serif'
+      // 应用优化的导出样式
+      applyExportImageStyles(exportElement)
       
       // 获取当前周的日期
       const weekDates = getWeekDates(selectedDate)
       
       // 创建表格
       const table = document.createElement('table')
-      table.style.borderCollapse = 'collapse'
-      table.style.width = '100%'
-      table.style.fontSize = '14px'
+      // 应用优化的表格样式
+      applyExportTableStyles(table)
       
       // 创建表头
       const thead = document.createElement('thead')
@@ -338,19 +347,15 @@ export default function WorkSchedulePage() {
       
       // 添加空的左上角单元格
       const emptyHeader = document.createElement('th')
-      emptyHeader.style.border = '1px solid #ddd'
-      emptyHeader.style.padding = '8px'
-      emptyHeader.style.textAlign = 'center'
-      emptyHeader.style.backgroundColor = '#f2f2f2'
+      // 应用优化的表头样式
+      applyExportHeaderStyles(emptyHeader)
       headerRow.appendChild(emptyHeader)
       
       // 添加日期表头
       weekDates.forEach(date => {
         const th = document.createElement('th')
-        th.style.border = '1px solid #ddd'
-        th.style.padding = '8px'
-        th.style.textAlign = 'center'
-        th.style.backgroundColor = '#f2f2f2'
+        // 应用优化的表头样式
+        applyExportHeaderStyles(th)
         th.textContent = `${date.getMonth() + 1}/${date.getDate()} (${['日', '月', '火', '水', '木', '金', '土'][date.getDay()]})`
         headerRow.appendChild(th)
       })
@@ -461,7 +466,7 @@ export default function WorkSchedulePage() {
             nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
           }
         }
-        
+      
         // 如果工作时间从夜班开始（早于08:00），也需要考虑第二天的夜班部分
         if (startMinutes < 8 * 60 && endMinutes > 24 * 60) {
           const nightShiftStart2 = 0;      // 00:00
@@ -549,9 +554,9 @@ export default function WorkSchedulePage() {
         
         // 店铺名称列
         const shopCell = document.createElement('td')
-        shopCell.style.border = '1px solid #ddd'
-        shopCell.style.padding = '8px'
         shopCell.style.fontWeight = 'bold'
+        // 应用优化的单元格样式
+        applyExportCellStyles(shopCell)
         shopCell.textContent = shopName
         row.appendChild(shopCell)
         
@@ -561,9 +566,8 @@ export default function WorkSchedulePage() {
           const schedule = shopSchedules[dateStr]
           
           const cell = document.createElement('td')
-          cell.style.border = '1px solid #ddd'
-          cell.style.padding = '8px'
-          cell.style.textAlign = 'center'
+          // 应用优化的单元格样式
+          applyExportCellStyles(cell)
           
           if (schedule) {
             // 时间信息
@@ -571,6 +575,8 @@ export default function WorkSchedulePage() {
             const formattedStartTime = formatTimeToHHMM(schedule.start_time);
             const formattedEndTime = formatTimeToHHMM(schedule.end_time);
             timeDiv.textContent = `${formattedStartTime}-${formattedEndTime}`
+            // 设置时间信息字体颜色确保清晰可见
+            timeDiv.style.color = '#333333'
             cell.appendChild(timeDiv)
             
             // 预计工资信息
@@ -578,7 +584,7 @@ export default function WorkSchedulePage() {
             const salaryDiv = document.createElement('div')
             salaryDiv.textContent = `${salary}日元`
             salaryDiv.style.fontSize = '12px'
-            salaryDiv.style.color = '#666'
+            salaryDiv.style.color = '#666666' // 使用深灰色确保清晰可见
             salaryDiv.style.marginTop = '4px'
             cell.appendChild(salaryDiv)
             
@@ -603,6 +609,8 @@ export default function WorkSchedulePage() {
       totalSalaryDiv.style.fontSize = '16px'
       totalSalaryDiv.style.fontWeight = 'bold'
       totalSalaryDiv.style.textAlign = 'right'
+      // 设置字体颜色确保清晰可见
+      totalSalaryDiv.style.color = '#333333'
       totalSalaryDiv.textContent = `本周预计工资总计：${totalWeeklySalary}日元`
       exportElement.appendChild(totalSalaryDiv)
       
@@ -612,23 +620,22 @@ export default function WorkSchedulePage() {
       totalBreakHoursDiv.style.fontSize = '16px'
       totalBreakHoursDiv.style.fontWeight = 'bold'
       totalBreakHoursDiv.style.textAlign = 'right'
+      // 设置字体颜色确保清晰可见
+      totalBreakHoursDiv.style.color = '#333333'
       totalBreakHoursDiv.textContent = `本周总休息時長：${totalWeeklyBreakHours.toFixed(1)}小时`
       exportElement.appendChild(totalBreakHoursDiv)
       
       // 添加标题
       const title = document.createElement('h2')
       title.textContent = `排班表 - ${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日 至 ${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`
-      title.style.textAlign = 'center'
-      title.style.marginBottom = '20px'
+      // 应用优化的标题样式
+      applyExportTitleStyles(title)
       exportElement.insertBefore(title, table)
       
       document.body.appendChild(exportElement)
       
       // 使用html2canvas将元素转换为图片
-      const canvas = await html2canvas(exportElement, {
-        backgroundColor: '#ffffff',
-        scale: 2 // 提高图片质量
-      })
+      const canvas = await html2canvas(exportElement, getOptimizedHtml2CanvasOptions())
       
       // 移除临时元素
       document.body.removeChild(exportElement)

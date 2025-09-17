@@ -29,7 +29,7 @@ const FeatureCard = React.memo(({
     </div>
     <p className="text-cream-text-light text-sm mb-4">{description}</p>
     <button className="text-sm font-medium text-cream-accent hover:text-cream-accent-hover transition duration-300">
-      查看详情 →
+      点击进入 →
     </button>
   </div>
 ))

@@ -4,7 +4,6 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import ShopHourlyRates from '@/components/ShopHourlyRates'
 
 export default function SettingsPage() {
   const { user, loading } = useAuth()
@@ -165,9 +164,6 @@ export default function SettingsPage() {
               </div>
             </form>
           </div>
-
-          {/* 店铺时薪设置展示 */}
-          <ShopHourlyRates userId={user.id} />
 
           <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mt-6">
             <h2 className="text-lg font-medium text-cream-text-dark mb-4">账户管理</h2>
