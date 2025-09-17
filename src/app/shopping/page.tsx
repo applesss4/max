@@ -9,7 +9,9 @@ import {
   getProductsByCategoryWithPrices,
   getUserCategories,
   addToCart,
-  getUserCart
+  getUserCart,
+  getUserOrders,
+  getOrderDetails
 } from '../../services/ecommerceService'
 import { Product } from '../../services/ecommerceService'
 
@@ -34,6 +36,9 @@ export default function ShoppingPage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false) // 添加商品弹窗状态
+  const [priceComparison, setPriceComparison] = useState<{[key: string]: {priceDiff: number, shopName: string, isLower: boolean}} | null>(null) // 比价结果状态
+  const [isPriceComparisonModalOpen, setIsPriceComparisonModalOpen] = useState(false) // 比价详情模态框状态
+  const [latestOrderPrice, setLatestOrderPrice] = useState<{[key: string]: number}>({}) // 最新订单价格
 
   // 获取商品数据
   const fetchProducts = useCallback(async () => {
@@ -97,12 +102,109 @@ export default function ShoppingPage() {
     }
   }, [user])
 
+  // 获取最近订单的商品价格信息并进行比价
+  const fetchPriceComparison = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // 获取用户订单列表（按时间倒序排列）
+      const { data: orders, error: ordersError } = await getUserOrders(user.id);
+      if (ordersError) throw ordersError;
+      
+      // 如果没有订单，直接返回
+      if (!orders || orders.length === 0) {
+        setPriceComparison({});
+        setLatestOrderPrice({});
+        return;
+      }
+      
+      // 获取最新的订单
+      const latestOrder = orders[0];
+      
+      // 获取最新订单的详情
+      const { data: latestOrderDetails, error: latestOrderDetailsError } = await getOrderDetails(latestOrder.id);
+      if (latestOrderDetailsError) throw latestOrderDetailsError;
+      
+      if (!latestOrderDetails) {
+        setPriceComparison({});
+        setLatestOrderPrice({});
+        return;
+      }
+      
+      // 创建一个映射来存储最新订单的价格信息
+      const latestPrices: {[key: string]: number} = {};
+      latestOrderDetails.items.forEach(item => {
+        if (item.product) {
+          latestPrices[item.product.name] = item.price;
+        }
+      });
+      setLatestOrderPrice(latestPrices);
+      
+      // 创建一个映射来存储商品的最新价格信息
+      const comparisonResult: {[key: string]: {priceDiff: number, shopName: string, isLower: boolean}} = {};
+      
+      // 遍历最新订单项，获取每个商品的历史订单价格
+      for (const item of latestOrderDetails.items) {
+        if (item.product) {
+          const productName = item.product.name;
+          
+          // 在历史订单中查找相同商品的购买记录（排除最新订单）
+          let previousPrice = 0;
+          let previousShopName = '';
+          let foundPreviousOrder = false;
+          
+          // 遍历历史订单（除了最新订单）
+          for (let i = 1; i < orders.length; i++) {
+            const order = orders[i];
+            const { data: orderDetails, error: orderDetailsError } = await getOrderDetails(order.id);
+            
+            if (orderDetailsError) continue;
+            if (!orderDetails) continue;
+            
+            // 在订单中查找相同商品
+            const sameProduct = orderDetails.items.find(orderItem => 
+              orderItem.product && orderItem.product.name === productName
+            );
+            
+            if (sameProduct) {
+              previousPrice = sameProduct.price;
+              previousShopName = (sameProduct.product as any)?.shop?.name || '未知超市';
+              foundPreviousOrder = true;
+              break; // 找到最近一次购买记录就停止
+            }
+          }
+          
+          // 如果找到了历史订单记录，则进行比较
+          if (foundPreviousOrder) {
+            const currentPrice = item.price; // 最新订单中的价格
+            const priceDiff = currentPrice - previousPrice;
+            
+            comparisonResult[productName] = {
+              priceDiff: parseFloat(priceDiff.toFixed(2)),
+              shopName: previousShopName,
+              isLower: priceDiff < 0
+            };
+          }
+        }
+      }
+      
+      setPriceComparison(comparisonResult);
+      setIsPriceComparisonModalOpen(true); // 显示比价详情模态框
+    } catch (error) {
+      console.error('获取比价信息失败:', error);
+      setPriceComparison({});
+      setLatestOrderPrice({});
+    }
+  }, [user]);
+
   // 设置默认分类的副作用
   useEffect(() => {
     if (user) {
       fetchProducts()
       fetchCartItemCount()
       fetchCategories() // 获取用户自定义分类
+      // 移除自动获取比价信息，只在用户点击比价按钮时获取
+      // fetchPriceComparison() 
     }
   }, [user, fetchProducts, fetchCartItemCount, fetchCategories])
 
@@ -156,6 +258,15 @@ export default function ShoppingPage() {
                 <h1 className="text-xl font-semibold text-cream-text-dark">居家购物</h1>
               </div>
               <div className="flex items-center">
+                <button
+                  onClick={fetchPriceComparison}
+                  className="p-2 text-cream-text-dark hover:text-cream-accent mr-2"
+                  title="比价"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
                 <button
                   onClick={() => router.push('/shopping/shops')}
                   className="p-2 text-cream-text-dark hover:text-cream-accent mr-2"
@@ -315,6 +426,34 @@ export default function ShoppingPage() {
                       {product.shop_name && (
                         <p className="text-xs text-cream-text-light truncate">{product.shop_name}</p>
                       )}
+                      {/* 比价信息显示 */}
+                      {priceComparison && priceComparison[product.name] && (
+                        <div className={`text-xs mt-1 flex items-center ${
+                          priceComparison[product.name].isLower 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        }`}>
+                          {priceComparison[product.name].isLower ? (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              <span className="truncate" title={`${priceComparison[product.name].shopName}`}>
+                                便宜了{Math.abs(priceComparison[product.name].priceDiff).toFixed(2)}元 ({priceComparison[product.name].shopName})
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                              </svg>
+                              <span>
+                                贵了{Math.abs(priceComparison[product.name].priceDiff).toFixed(2)}元
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -344,6 +483,62 @@ export default function ShoppingPage() {
             userId={user?.id || ''}
           />
         </React.Suspense>
+
+        {/* 比价详情模态框 */}
+        {isPriceComparisonModalOpen && priceComparison && (
+          <div className="fixed inset-0 bg-cream-bg bg-opacity-70 flex items-start justify-center p-2 z-50 pt-8">
+            <div className="bg-cream-card rounded-2xl shadow-lg p-4 w-full max-w-2xl border border-cream-border max-h-[85vh] overflow-y-auto modal-compact">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-semibold text-cream-text-dark">最近一次购买对比上一次购买价格对比</h2>
+                <button
+                  onClick={() => setIsPriceComparisonModalOpen(false)}
+                  className="text-cream-text-light hover:text-cream-text"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {Object.entries(priceComparison).map(([productName, comparison]) => (
+                  <div key={productName} className="border border-cream-border rounded-lg p-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-medium text-cream-text-dark">{productName} ({comparison.shopName})</h3>
+                      <div className={`flex items-center ${comparison.isLower ? 'text-green-600' : 'text-red-600'}`}>
+                        {comparison.isLower ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6 6" />
+                            </svg>
+                            <span>便宜了 {Math.abs(comparison.priceDiff).toFixed(2)} 日元</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                            <span>贵了 {Math.abs(comparison.priceDiff).toFixed(2)} 日元</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-cream-text-light">
+                      <p>最近购买: {comparison.shopName} - <span className="text-cream-text-dark text-sm">{latestOrderPrice[productName]?.toFixed(2) || 'N/A'} 日元</span></p>
+                      <p>上次购买: {comparison.shopName} - <span className="text-cream-text-dark text-sm">{(latestOrderPrice[productName] - comparison.priceDiff).toFixed(2)} 日元</span></p>
+                    </div>
+                  </div>
+                ))}
+                
+                {Object.keys(priceComparison).length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-cream-text-dark">暂无价格比较信息</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   )
