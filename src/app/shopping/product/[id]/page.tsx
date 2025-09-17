@@ -193,7 +193,6 @@ export default function ProductDetailPage() {
               {/* 商品图片 */}
               <div className="bg-cream-bg rounded-xl overflow-hidden flex items-center justify-center h-96">
                 {product.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={product.image_url} 
                     alt={product.name} 

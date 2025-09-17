@@ -275,7 +275,6 @@ export default function ProductModal({
     return (
       <div className="bg-cream-bg rounded-xl overflow-hidden flex items-center justify-center h-48 sm:h-64">
         {product.image_url && isValidImageUrl(product.image_url) ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img 
             src={product.image_url} 
             alt={product.name} 

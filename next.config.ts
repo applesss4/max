@@ -19,12 +19,18 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error"] } : false,
   },
   
-  // 启用实验性功能
+  // 启用实验性功能和Turbopack配置
   experimental: {
     // 移除了无效的optimizeCss配置
+    turbo: {
+      rules: {
+        "*.svg": {
+          loaders: ["@svgr/webpack"],
+          as: "*.js",
+        },
+      },
+    },
   },
-  
-  // 移除了无效的optimizeCss配置
   
   // 启用生产环境优化
   productionBrowserSourceMaps: false,

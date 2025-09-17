@@ -287,7 +287,6 @@ export default function ShoppingPage() {
                           }
                           
                           if (isValidImageUrl(product.image_url)) {
-                            // eslint-disable-next-line @next/next/no-img-element
                             return (
                               <img 
                                 src={product.image_url} 

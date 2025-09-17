@@ -215,7 +215,6 @@ export default function ShoppingCartPage() {
                       <div key={item.id} className="flex items-center border-b border-cream-border pb-4 last:border-0 last:pb-0">
                         <div className="bg-cream-bg border border-cream-border rounded-lg w-12 h-12 flex items-center justify-center mr-2">
                           {item.product?.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img 
                               src={item.product.image_url} 
                               alt={item.product.name} 
