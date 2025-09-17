@@ -22,12 +22,14 @@ const nextConfig: NextConfig = {
   // 启用实验性功能和Turbopack配置
   experimental: {
     // 移除了无效的optimizeCss配置
-    turbo: {
-      rules: {
-        "*.svg": {
-          loaders: ["@svgr/webpack"],
-          as: "*.js",
-        },
+  },
+  
+  // Turbopack 配置
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
       },
     },
   },
