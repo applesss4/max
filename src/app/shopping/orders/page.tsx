@@ -155,7 +155,7 @@ export default function OrdersPage() {
 
         {/* 订单详情模态框 */}
         {selectedOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50">
+          <div className="fixed inset-0 bg-cream-bg bg-opacity-70 flex items-center justify-center p-2 z-50">
             <div className="bg-cream-card rounded-2xl shadow-lg p-4 w-full max-w-2xl border border-cream-border max-h-[90vh] overflow-y-auto modal-compact">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-cream-text-dark">订单详情</h2>
