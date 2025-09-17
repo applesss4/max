@@ -300,7 +300,7 @@ export default function ShoppingPage() {
                   title="比价"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </button>
                 <button
@@ -421,14 +421,15 @@ export default function ShoppingPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 grid-gap-compact">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
                 {filteredProducts.map(product => (
                   <div 
                     key={`${product.name}-${product.category}`} 
-                    className="border border-cream-border rounded-lg overflow-hidden hover:shadow-md transition duration-300 cursor-pointer"
+                    className="border border-cream-border rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer bg-white flex flex-col"
                     onClick={() => openProductModal(product.id)}
                   >
-                    <div className="bg-cream-bg h-compact-image flex items-center justify-center">
+                    {/* 商品图片区域 - 固定尺寸 */}
+                    <div className="bg-cream-bg flex items-center justify-center" style={{ height: '160px' }}>
                       {product.image_url ? (
                         // 检查图片URL是否有效
                         (() => {
@@ -480,40 +481,53 @@ export default function ShoppingPage() {
                         </div>
                       )}
                     </div>
-                    <div className="p-compact">
-                      <h3 className="font-medium text-cream-text-dark text-compact mb-1 line-clamp-2">{product.name}</h3>
-                      <p className="text-compact text-cream-text-light mb-1 line-clamp-2">{product.description}</p>
-                      <div className="flex justify-between items-center">
+                    
+                    {/* 商品信息区域 */}
+                    <div className="p-4 flex-grow flex flex-col">
+                      {/* 商品标题和超市信息 */}
+                      <h3 className="font-semibold text-cream-text-dark text-base mb-2 line-clamp-2 leading-tight">
+                        {product.name}
+                        {product.shop_name && (
+                          <span className="text-xs text-cream-text-light ml-2">
+                            「{product.shop_name}」
+                          </span>
+                        )}
+                      </h3>
+                      
+                      {/* 价格和按钮区域 */}
+                      <div className="flex items-center justify-between pt-2 mt-auto">
                         <div>
-                          <span className="text-compact font-bold text-cream-text-dark">{product.lowest_price.toFixed(2)}日元</span>
+                          <span className="text-xl font-bold text-cream-text-dark leading-none">
+                            ¥{product.lowest_price.toFixed(0)}
+                          </span>
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleAddToCart(product.id);
                           }}
-                          className="px-1.5 py-0.5 text-xs font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded transition duration-300"
+                          className="px-4 py-2 text-sm font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded-full transition duration-300 whitespace-nowrap shadow-sm"
                         >
-                          加入
+                          +
                         </button>
                       </div>
-                      {product.shop_name && (
-                        <p className="text-xs text-cream-text-light truncate">{product.shop_name}</p>
-                      )}
-                      {/* 比价信息显示 */}
-                      {priceComparison && priceComparison[product.name] && (
-                        <div className={`text-xs mt-1 flex items-center ${
-                          priceComparison[product.name].isLower 
-                            ? 'text-green-600' 
-                            : 'text-red-600'
-                        }`}>
+                    </div>
+                    
+                    {/* 比价信息显示 */}
+                    {priceComparison && priceComparison[product.name] && (
+                      <div className={`px-4 pb-3 pt-1 ${
+                        priceComparison[product.name].isLower 
+                          ? 'text-green-600' 
+                          : 'text-red-600'
+                      }`}>
+                        <div className="flex items-center text-xs">
                           {priceComparison[product.name].isLower ? (
                             <>
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4 4-6 6" />
                               </svg>
                               <span className="truncate" title={`${priceComparison[product.name].shopName}`}>
-                                便宜了{Math.abs(priceComparison[product.name].priceDiff).toFixed(2)}元 ({priceComparison[product.name].shopName})
+                                ↓{Math.abs(priceComparison[product.name].priceDiff).toFixed(0)}元
                               </span>
                             </>
                           ) : (
@@ -522,13 +536,13 @@ export default function ShoppingPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               </svg>
                               <span>
-                                贵了{Math.abs(priceComparison[product.name].priceDiff).toFixed(2)}元
+                                ↑{Math.abs(priceComparison[product.name].priceDiff).toFixed(0)}元
                               </span>
                             </>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
