@@ -8,6 +8,7 @@ import {
   getProductPricesByProductName,
   getProductByIdWithShop,
   deleteProduct,
+  getUserCategories, // 添加导入获取用户分类的函数
   type Product
 } from '../services/ecommerceService'
 
@@ -43,6 +44,8 @@ export default function ProductModal({
   const [notification, setNotification] = useState<{type: string, message: string} | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editedPrices, setEditedPrices] = useState<{[key: string]: number}>({}) // 用于编辑不同超市的价格
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]) // 添加分类状态
+  const [editedCategory, setEditedCategory] = useState('') // 添加编辑分类状态
 
   // 获取商品详情
   const fetchProduct = useCallback(async () => {
@@ -55,6 +58,7 @@ export default function ProductModal({
       if (productError) throw productError
       
       setProduct(productData || null)
+      setEditedCategory(productData?.category || '') // 设置当前商品的分类
       
       // 如果有商品名，获取同名商品在不同超市的价格信息
       if (productData?.name) {
@@ -80,6 +84,24 @@ export default function ProductModal({
     }
   }, [productId])
 
+  // 获取用户分类
+  const fetchUserCategories = useCallback(async () => {
+    if (!user) return
+    
+    try {
+      const { data, error } = await getUserCategories(user.id)
+      if (error) throw error
+      setCategories(data || [])
+      
+      // 如果还没有设置分类，设置默认分类
+      if (!editedCategory && data && data.length > 0) {
+        setEditedCategory(data[0].name)
+      }
+    } catch (error) {
+      console.error('获取分类失败:', error)
+    }
+  }, [user, editedCategory])
+
   useEffect(() => {
     if (isOpen && productId) {
       fetchProduct()
@@ -92,6 +114,13 @@ export default function ProductModal({
       setIsEditing(false)
     }
   }, [isOpen, productId, fetchProduct])
+
+  // 当用户和编辑模式变化时获取分类
+  useEffect(() => {
+    if (user && isEditing) {
+      fetchUserCategories()
+    }
+  }, [user, isEditing, fetchUserCategories])
 
   // 添加到购物车
   const handleAddToCart = useCallback(async () => {
@@ -168,9 +197,17 @@ export default function ProductModal({
     setEditedPrices(newEditedPrices)
   }
 
-  // 保存价格编辑
-  const handleSavePrices = async () => {
+  // 保存编辑
+  const handleSaveEdit = async () => {
+    if (!product) return
+    
     try {
+      // 更新商品分类
+      if (editedCategory !== product.category) {
+        const { error } = await updateProduct(product.id, { category: editedCategory })
+        if (error) throw error
+      }
+      
       // 更新每个商品的价格
       const updatePromises = sameProducts.map(async (p) => {
         if (editedPrices[p.id] !== (p.price || 0)) {
@@ -182,7 +219,7 @@ export default function ProductModal({
       await Promise.all(updatePromises)
       
       setIsEditing(false)
-      setNotification({type: 'success', message: '价格信息已更新'})
+      setNotification({type: 'success', message: '商品信息已更新'})
       
       // 重新获取商品信息
       if (product?.name) {
@@ -211,8 +248,8 @@ export default function ProductModal({
       
       setTimeout(() => setNotification(null), 3000)
     } catch (error) {
-      console.error('更新价格失败:', error)
-      setNotification({type: 'error', message: '更新价格失败'})
+      console.error('更新商品失败:', error)
+      setNotification({type: 'error', message: '更新商品失败'})
       setTimeout(() => setNotification(null), 3000)
     }
   }
@@ -316,6 +353,20 @@ export default function ProductModal({
           </button>
         </div>
         
+        {/* 分类编辑 */}
+        <div className="mb-4">
+          <label className="block text-cream-text-dark text-xs font-medium mb-1">分类</label>
+          <select
+            value={editedCategory}
+            onChange={(e) => setEditedCategory(e.target.value)}
+            className="w-full p-2 border border-cream-border rounded-lg focus:ring-2 focus:ring-cream-accent focus:border-transparent text-sm"
+          >
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.name}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+        
         <div className="mb-6">
           <h2 className="text-base font-semibold text-cream-text-dark mb-2">价格编辑</h2>
           <div className="space-y-2">
@@ -343,9 +394,9 @@ export default function ProductModal({
         <div className="border-t border-cream-border pt-4">
           <div className="flex space-x-2">
             <button
-              onClick={handleSavePrices}
+              onClick={handleSaveEdit}
               className="flex-1 py-2 px-3 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition duration-300 text-sm"
-              aria-label="保存价格"
+              aria-label="保存编辑"
             >
               保存
             </button>

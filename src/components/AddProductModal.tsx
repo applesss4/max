@@ -1,11 +1,9 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { compressBase64Image, getBase64ImageSize } from '@/utils/imageOptimizer'
 import { createProduct, getUserShops, getUserCategories } from '@/services/ecommerceService'
 import { Product, Category } from '@/services/ecommerceService'
-
-
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -35,15 +33,15 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
       if (error) throw error
       setShops(data || [])
       
-      // 设置默认选择第一个超市
-      if (data && data.length > 0) {
+      // 设置默认选择第一个超市（仅当shopId为空时）
+      if (!shopId && data && data.length > 0 && isOpen) {
         setShopId(data[0].id)
       }
     } catch (err) {
       console.error('获取超市列表失败:', err)
       setError('获取超市列表失败')
     }
-  }, [userId])
+  }, [userId, shopId, isOpen])
 
   // 获取用户分类列表
   const fetchUserCategories = useCallback(async () => {
@@ -54,15 +52,15 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
       if (error) throw error
       setCategories(data || [])
       
-      // 设置默认选择第一个分类
-      if (data && data.length > 0) {
+      // 设置默认选择第一个分类（仅当category为空时）
+      if (!category && data && data.length > 0 && isOpen) {
         setCategory(data[0].name)
       }
     } catch (err) {
       console.error('获取分类列表失败:', err)
       setError('获取分类列表失败')
     }
-  }, [userId])
+  }, [userId, category, isOpen])
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -190,7 +188,7 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
     onClose()
     setName('')
     setPrice('')
-    setCategory(categories.length > 0 ? categories[0].name : '')
+    setCategory('')
     setShopId('')
     setImageFile(null)
     setImagePreview(null)
