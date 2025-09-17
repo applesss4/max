@@ -99,12 +99,6 @@ export default function ProductModal({
 
   // 设置默认分类的副作用
   useEffect(() => {
-    if (categories.length > 0 && !editedCategory) {
-      setEditedCategory(categories[0].name)
-    }
-  }, [categories, editedCategory])
-
-  useEffect(() => {
     if (isOpen && productId) {
       fetchProduct()
       setQuantity(1)

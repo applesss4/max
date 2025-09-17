@@ -54,6 +54,13 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
 
   // 设置默认值的副作用
   useEffect(() => {
+    if (isOpen && userId) {
+      fetchUserShops()
+      fetchUserCategories()
+    }
+  }, [isOpen, userId, fetchUserShops, fetchUserCategories])
+
+  useEffect(() => {
     if (isOpen && shops.length > 0 && !shopId) {
       setShopId(shops[0].id)
     }
@@ -64,13 +71,6 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
       setCategory(categories[0].name)
     }
   }, [isOpen, categories, category])
-
-  useEffect(() => {
-    if (isOpen && userId) {
-      fetchUserShops()
-      fetchUserCategories()
-    }
-  }, [isOpen, userId, fetchUserShops, fetchUserCategories])
 
   // 处理图片选择
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

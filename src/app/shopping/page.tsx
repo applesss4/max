@@ -106,18 +106,6 @@ export default function ShoppingPage() {
     }
   }, [user, fetchProducts, fetchCartItemCount, fetchCategories])
 
-  // 显示加载状态
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
-          <p className="mt-2 text-cream-text-dark">加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
   // 打开商品详情弹窗
   const openProductModal = (productId: string) => {
     setSelectedProductId(productId)
