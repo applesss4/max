@@ -1,16 +1,17 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { isValidBase64Image } from '@/utils/imageOptimizer'
+import React, { useState, useEffect, useCallback } from 'react'
+import { isValidBase64Image } from '../utils/imageOptimizer'
 import { 
   getProductById, 
   updateProduct, 
   getProductPricesByProductName,
   getProductByIdWithShop,
-  deleteProduct // 添加删除商品函数
-} from '@/services/ecommerceService'
-import { Product } from '@/services/ecommerceService'
+  deleteProduct,
+  type Product
+} from '../services/ecommerceService'
 
+// 确保 ProductWithShop 正确继承 Product 的所有属性
 interface ProductWithShop extends Product {
   shop?: {
     id: string
@@ -53,7 +54,7 @@ export default function ProductModal({
       const { data: productData, error: productError } = await getProductByIdWithShop(productId)
       if (productError) throw productError
       
-      setProduct(productData)
+      setProduct(productData || null)
       
       // 如果有商品名，获取同名商品在不同超市的价格信息
       if (productData?.name) {
@@ -61,13 +62,13 @@ export default function ProductModal({
         if (sameProductsError) throw sameProductsError
         
         // 按价格排序，最低价在前
-        const sortedProducts = sameProductsData?.sort((a, b) => a.price - b.price) || []
+        const sortedProducts = sameProductsData?.sort((a, b) => (a.price || 0) - (b.price || 0)) || []
         setSameProducts(sortedProducts)
         
         // 初始化编辑价格状态
         const initialEditedPrices: {[key: string]: number} = {}
         sortedProducts.forEach(p => {
-          initialEditedPrices[p.id] = p.price
+          initialEditedPrices[p.id] = p.price || 0
         })
         setEditedPrices(initialEditedPrices)
       }
@@ -172,7 +173,7 @@ export default function ProductModal({
     try {
       // 更新每个商品的价格
       const updatePromises = sameProducts.map(async (p) => {
-        if (editedPrices[p.id] !== p.price) {
+        if (editedPrices[p.id] !== (p.price || 0)) {
           return updateProduct(p.id, { price: editedPrices[p.id] })
         }
         return Promise.resolve()
@@ -187,13 +188,13 @@ export default function ProductModal({
       if (product?.name) {
         const { data: sameProductsData, error: sameProductsError } = await getProductPricesByProductName(product.name)
         if (!sameProductsError) {
-          const sortedProducts = sameProductsData?.sort((a, b) => a.price - b.price) || []
+          const sortedProducts = sameProductsData?.sort((a, b) => (a.price || 0) - (b.price || 0)) || []
           setSameProducts(sortedProducts)
           
           // 更新编辑价格状态
           const initialEditedPrices: {[key: string]: number} = {}
           sortedProducts.forEach(p => {
-            initialEditedPrices[p.id] = p.price
+            initialEditedPrices[p.id] = p.price || 0
           })
           setEditedPrices(initialEditedPrices)
           
@@ -217,7 +218,7 @@ export default function ProductModal({
   }
 
   // 渲染通知消息
-  const renderNotification = useCallback(() => {
+  const renderNotification = () => {
     if (!notification) return null
     
     return (
@@ -227,20 +228,20 @@ export default function ProductModal({
         {notification.message}
       </div>
     )
-  }, [notification])
+  }
 
   // 渲染加载状态
-  const renderLoading = useCallback(() => (
+  const renderLoading = () => (
     <div className="flex items-center justify-center h-64">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cream-accent mx-auto"></div>
         <p className="mt-2 text-cream-text-dark text-sm">加载中...</p>
       </div>
     </div>
-  ), [])
+  )
 
   // 渲染空状态
-  const renderEmptyState = useCallback(() => (
+  const renderEmptyState = () => (
     <div className="flex items-center justify-center h-64">
       <div className="text-center">
         <div className="bg-cream-border p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
@@ -252,10 +253,10 @@ export default function ProductModal({
         <p className="text-cream-text-light text-sm">抱歉，未找到该商品</p>
       </div>
     </div>
-  ), [])
+  )
 
   // 渲染商品图片
-  const renderProductImage = useCallback(() => {
+  const renderProductImage = () => {
     if (!product) return null
     
     // 检查图片URL是否有效
@@ -296,10 +297,10 @@ export default function ProductModal({
         )}
       </div>
     )
-  }, [product])
+  }
 
   // 渲染编辑模式
-  const renderEditMode = useCallback(() => {
+  const renderEditMode = () => {
     return (
       <>
         <div className="flex justify-between items-start mb-3">
@@ -370,10 +371,10 @@ export default function ProductModal({
         </div>
       </>
     )
-  }, [product?.name, sameProducts, editedPrices, handlePriceChange, handleSavePrices, handleDeleteProduct, setIsEditing])
+  }
 
   // 渲染查看模式
-  const renderViewMode = useCallback(() => {
+  const renderViewMode = () => {
     if (!product) return null
     
     return (
@@ -394,7 +395,7 @@ export default function ProductModal({
         {/* 当前商品价格和超市信息 */}
         <div className="mb-5">
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-cream-text-dark">{product.price.toFixed(2)}日元</span>
+            <span className="text-2xl font-bold text-cream-text-dark">{(product.price || 0).toFixed(2)}日元</span>
             {product.shop && (
               <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
                 {product.shop.name}
@@ -430,7 +431,7 @@ export default function ProductModal({
                       ? 'text-green-700' 
                       : 'text-cream-text-dark'
                   }`}>
-                    {sameProduct.price.toFixed(2)}日元
+                    {(sameProduct.price || 0).toFixed(2)}日元
                   </span>
                 </div>
               ))}
@@ -477,7 +478,7 @@ export default function ProductModal({
         </div>
       </>
     )
-  }, [product, sameProducts, quantity, decrementQuantity, incrementQuantity, handleAddToCart, setIsEditing])
+  }
 
   if (!isOpen) return null
 
