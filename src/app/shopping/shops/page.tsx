@@ -1,11 +1,11 @@
 'use client'
 
-import ProtectedRoute from '@/components/ProtectedRoute'
-import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '../../../components/ProtectedRoute'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useState, useEffect, useCallback } from 'react'
-import { getUserShops, createShop, getUserCategories, createCategory, updateCategory, deleteCategory } from '@/services/ecommerceService'
-import { Shop, Category } from '@/services/ecommerceService'
+import { getUserShops, createShop, getUserCategories, createCategory, updateCategory, deleteCategory } from '../../../services/ecommerceService'
+import { Shop, Category } from '../../../services/ecommerceService'
 
 export default function ShopsManagementPage() {
   const { user, loading } = useAuth()
@@ -57,6 +57,7 @@ export default function ShopsManagementPage() {
     }
   }, [user])
 
+  // 设置获取数据的副作用
   useEffect(() => {
     if (user) {
       if (activeTab === 'shops') {

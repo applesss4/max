@@ -4,8 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useParams } from 'next/navigation'
 import React, { useState, useEffect, useCallback } from 'react'
-import { getProductByIdWithShop, getProductPricesByProductName } from '@/services/ecommerceService'
-import { Product } from '@/services/ecommerceService'
+import { getProductByIdWithShop, getProductPricesByProductName, Product } from '@/services/ecommerceService'
 
 // 扩展Product类型以包含shop信息
 interface ProductWithShop extends Product {
@@ -55,6 +54,7 @@ export default function ProductDetailPage() {
     }
   }, [productId])
 
+  // 设置获取商品详情的副作用
   useEffect(() => {
     if (productId) {
       fetchProduct()
@@ -153,7 +153,7 @@ export default function ProductDetailPage() {
   }
 
   // 获取最低价格
-  const lowestPrice = productPrices.length > 0 ? productPrices[0].price : product.price
+  const lowestPrice = productPrices.length > 0 ? (productPrices[0] as Product).price : (product ? (product as Product).price : 0)
 
   return (
     <ProtectedRoute>
@@ -192,10 +192,10 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* 商品图片 */}
               <div className="bg-cream-bg rounded-xl overflow-hidden flex items-center justify-center h-96">
-                {product.image_url ? (
+                {product && (product as Product).image_url ? (
                   <img 
-                    src={product.image_url} 
-                    alt={product.name} 
+                    src={(product as Product).image_url || ''} 
+                    alt={(product as Product).name || ''} 
                     className="max-h-full max-w-full object-contain"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -209,18 +209,20 @@ export default function ProductDetailPage() {
 
               {/* 商品信息 */}
               <div>
-                <h1 className="text-2xl font-bold text-cream-text-dark mb-4">{product.name}</h1>
-                <p className="text-cream-text-light mb-6">{product.description || '暂无商品描述'}</p>
+                <h1 className="text-2xl font-bold text-cream-text-dark mb-4">{product ? (product as Product).name : ''}</h1>
+                <p className="text-cream-text-light mb-6">{product && (product as Product).description ? (product as Product).description : '暂无商品描述'}</p>
                 
                 {/* 当前商品超市信息 */}
                 <div className="mb-4">
                   <div className="bg-cream-bg p-3 rounded-lg mb-4">
                     <p className="text-cream-text-light text-sm">超市</p>
-                    <p className="text-cream-text-dark font-medium">{(product as ProductWithShop).shop?.name || '未知超市'}</p>
+                    <p className="text-cream-text-dark font-medium">{product && (product as ProductWithShop).shop?.name || '未知超市'}</p>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="text-3xl font-bold text-cream-text-dark">{product.price.toFixed(2)}日元</span>
-                    {productPrices.length > 1 && product.price === lowestPrice && (
+                    <span className="text-3xl font-bold text-cream-text-dark">
+                      {product ? (product as Product).price.toFixed(2) : '0.00'}日元
+                    </span>
+                    {productPrices.length > 1 && product && (product as Product).price === lowestPrice && (
                       <span className="ml-2 text-sm text-cream-accent bg-green-100 px-2 py-1 rounded">最优惠</span>
                     )}
                   </div>
@@ -233,7 +235,7 @@ export default function ProductDetailPage() {
                     <div className="space-y-3">
                       {productPrices.map((item, index) => (
                         <div 
-                          key={item.id} 
+                          key={(item as Product).id} 
                           className={`p-3 rounded-lg border flex justify-between items-center ${
                             index === 0 
                               ? 'border-green-500 bg-green-50' 
@@ -241,14 +243,14 @@ export default function ProductDetailPage() {
                           }`}
                         >
                           <div>
-                            <div className="font-medium text-cream-text-dark">{item.shop?.name || '未知超市'}</div>
+                            <div className="font-medium text-cream-text-dark">{(item as ProductWithShop).shop?.name || '未知超市'}</div>
                             {index === 0 && (
                               <span className="inline-block mt-1 px-2 py-1 text-xs bg-green-500 text-white rounded">
                                 最优惠
                               </span>
                             )}
                           </div>
-                          <div className="text-cream-text-dark font-medium">{item.price.toFixed(2)}日元</div>
+                          <div className="text-cream-text-dark font-medium">{(item as Product).price.toFixed(2)}日元</div>
                         </div>
                       ))}
                     </div>
@@ -284,14 +286,14 @@ export default function ProductDetailPage() {
 
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock_quantity <= 0}
+                    disabled={!product || (product as Product).stock_quantity <= 0}
                     className={`w-full py-3 px-4 rounded-lg font-medium transition duration-300 ${
-                      product.stock_quantity <= 0
+                      !product || (product as Product).stock_quantity <= 0
                         ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                         : 'bg-cream-accent text-white hover:bg-cream-accent-hover'
                     }`}
                   >
-                    {product.stock_quantity <= 0 ? '缺货' : '加入购物车'}
+                    {!product || (product as Product).stock_quantity <= 0 ? '缺货' : '加入购物车'}
                   </button>
                 </div>
               </div>

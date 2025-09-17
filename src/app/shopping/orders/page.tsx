@@ -1,14 +1,14 @@
 'use client'
 
-import ProtectedRoute from '@/components/ProtectedRoute'
-import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '../../../components/ProtectedRoute'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
   getUserOrders,
   getOrderDetails
-} from '@/services/ecommerceService'
-import { Order, OrderItem } from '@/services/ecommerceService'
+} from '../../../services/ecommerceService'
+import { Order, OrderItem } from '../../../services/ecommerceService'
 
 export default function OrdersPage() {
   const { user, loading } = useAuth()
@@ -34,6 +34,7 @@ export default function OrdersPage() {
     }
   }, [user])
 
+  // 设置获取订单列表的副作用
   useEffect(() => {
     if (user) {
       fetchOrders()
