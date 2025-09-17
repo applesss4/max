@@ -1,16 +1,16 @@
 'use client'
 
-import ProtectedRoute from '@/components/ProtectedRoute'
-import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '../../../components/ProtectedRoute'
+import { useAuth } from '../../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
   getUserCart,
   updateCartItemQuantity,
   removeCartItem,
   clearCart
-} from '@/services/ecommerceService'
-import { CartDetails, CartItem } from '@/services/ecommerceService'
+} from '../../../services/ecommerceService'
+import { CartDetails } from '../../../services/ecommerceService'
 
 export default function ShoppingCartPage() {
   const { user, loading } = useAuth()
@@ -34,6 +34,7 @@ export default function ShoppingCartPage() {
     }
   }, [user])
 
+  // 设置获取购物车数据的副作用
   useEffect(() => {
     if (user) {
       fetchCart()

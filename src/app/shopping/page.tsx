@@ -1,35 +1,21 @@
 'use client'
 
-import ProtectedRoute from '@/components/ProtectedRoute'
-import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '../../components/ProtectedRoute'
+import { useAuth } from '../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
-  getAllProducts,
-  getProductsByCategory,
-  addToCart,
-  getUserCart,
   getAllProductsWithPrices,
   getProductsByCategoryWithPrices,
-  getUserCategories // 添加导入分类函数
-} from '@/services/ecommerceService'
-import { Product } from '@/services/ecommerceService'
+  getUserCategories,
+  addToCart,
+  getUserCart
+} from '../../services/ecommerceService'
+import { Product } from '../../services/ecommerceService'
 
 // 懒加载弹窗组件
-const ProductModal = lazy(() => import('@/components/ProductModal'))
-const AddProductModal = lazy(() => import('@/components/AddProductModal'))
-
-// 商品分类将在 useEffect 中从数据库获取
-// const CATEGORIES = [
-//   '全部',
-//   '食品饮料',
-//   '日用品',
-//   '清洁用品',
-//   '个人护理',
-//   '家居用品',
-//   '宠物用品',
-//   '其他'
-// ]
+const ProductModal = React.lazy(() => import('../../components/ProductModal'))
+const AddProductModal = React.lazy(() => import('../../components/AddProductModal'))
 
 interface MergedProduct extends Product {
   lowest_price: number
@@ -111,6 +97,7 @@ export default function ShoppingPage() {
     }
   }, [user])
 
+  // 设置默认分类的副作用
   useEffect(() => {
     if (user) {
       fetchProducts()
@@ -349,7 +336,7 @@ export default function ShoppingPage() {
         </main>
 
         {/* 商品详情弹窗 */}
-        <Suspense fallback={null}>
+        <React.Suspense fallback={null}>
           <ProductModal 
             productId={selectedProductId}
             isOpen={isModalOpen}
@@ -358,17 +345,17 @@ export default function ShoppingPage() {
             user={user}
             onProductUpdate={fetchProducts} // 添加商品更新回调
           />
-        </Suspense>
+        </React.Suspense>
 
         {/* 添加商品弹窗 */}
-        <Suspense fallback={null}>
+        <React.Suspense fallback={null}>
           <AddProductModal
             isOpen={isAddProductModalOpen}
             onClose={() => setIsAddProductModalOpen(false)}
             onProductAdded={fetchProducts}
             userId={user?.id || ''}
           />
-        </Suspense>
+        </React.Suspense>
       </div>
     </ProtectedRoute>
   )

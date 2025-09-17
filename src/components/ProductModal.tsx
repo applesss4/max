@@ -92,15 +92,17 @@ export default function ProductModal({
       const { data, error } = await getUserCategories(user.id)
       if (error) throw error
       setCategories(data || [])
-      
-      // 如果还没有设置分类，设置默认分类
-      if (!editedCategory && data && data.length > 0) {
-        setEditedCategory(data[0].name)
-      }
     } catch (error) {
       console.error('获取分类失败:', error)
     }
-  }, [user, editedCategory])
+  }, [user])
+
+  // 设置默认分类的副作用
+  useEffect(() => {
+    if (categories.length > 0 && !editedCategory) {
+      setEditedCategory(categories[0].name)
+    }
+  }, [categories, editedCategory])
 
   useEffect(() => {
     if (isOpen && productId) {

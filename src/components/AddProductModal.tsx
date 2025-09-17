@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState, useCallback, useEffect } from 'react'
-import { compressBase64Image, getBase64ImageSize } from '@/utils/imageOptimizer'
-import { createProduct, getUserShops, getUserCategories } from '@/services/ecommerceService'
-import { Product, Category } from '@/services/ecommerceService'
+import { compressBase64Image, getBase64ImageSize } from '../utils/imageOptimizer'
+import { createProduct, getUserShops, getUserCategories } from '../services/ecommerceService'
+import { Product, Category } from '../services/ecommerceService'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -32,16 +32,11 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
       const { data, error } = await getUserShops(userId)
       if (error) throw error
       setShops(data || [])
-      
-      // 设置默认选择第一个超市（仅当shopId为空时）
-      if (!shopId && data && data.length > 0 && isOpen) {
-        setShopId(data[0].id)
-      }
     } catch (err) {
       console.error('获取超市列表失败:', err)
       setError('获取超市列表失败')
     }
-  }, [userId, shopId, isOpen])
+  }, [userId])
 
   // 获取用户分类列表
   const fetchUserCategories = useCallback(async () => {
@@ -51,16 +46,24 @@ export default function AddProductModal({ isOpen, onClose, onProductAdded, userI
       const { data, error } = await getUserCategories(userId)
       if (error) throw error
       setCategories(data || [])
-      
-      // 设置默认选择第一个分类（仅当category为空时）
-      if (!category && data && data.length > 0 && isOpen) {
-        setCategory(data[0].name)
-      }
     } catch (err) {
       console.error('获取分类列表失败:', err)
       setError('获取分类列表失败')
     }
-  }, [userId, category, isOpen])
+  }, [userId])
+
+  // 设置默认值的副作用
+  useEffect(() => {
+    if (isOpen && shops.length > 0 && !shopId) {
+      setShopId(shops[0].id)
+    }
+  }, [isOpen, shops, shopId])
+
+  useEffect(() => {
+    if (isOpen && categories.length > 0 && !category) {
+      setCategory(categories[0].name)
+    }
+  }, [isOpen, categories, category])
 
   useEffect(() => {
     if (isOpen && userId) {

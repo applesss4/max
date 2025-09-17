@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { supabase } from '../lib/supabaseClient'
 import { User } from '@supabase/supabase-js'
 
 // 创建认证上下文
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loading])
 
+  // 设置认证监听器的副作用
   useEffect(() => {
     checkUser()
     const unsubscribe = setupAuthListener()
@@ -82,13 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // 使用useMemo优化context value
-  const value = useMemo(() => ({
+  const value = {
     user,
     login,
     logout,
     loading,
-  }), [user, login, logout, loading])
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
