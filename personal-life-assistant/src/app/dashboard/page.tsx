@@ -34,6 +34,8 @@ const FeatureCard = React.memo(({
   </div>
 ))
 
+FeatureCard.displayName = 'FeatureCard'
+
 export default function DashboardPage() {
   const { user, logout, loading } = useAuth()
   const router = useRouter()

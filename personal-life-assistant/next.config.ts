@@ -21,17 +21,15 @@ const nextConfig: NextConfig = {
   
   // 启用实验性功能
   experimental: {
-    optimizeCss: true,
+    // 移除了无效的optimizeCss配置
   },
   
-  // CSS优化配置
-  optimizeCss: true,
+  // 移除了无效的optimizeCss配置
   
   // 启用生产环境优化
   productionBrowserSourceMaps: false,
   
-  // 启用自动静态优化
-  staticOptimization: true,
+  // 移除了无效的staticOptimization配置
   
   // 配置headers以提高缓存性能
   async headers() {

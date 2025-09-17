@@ -87,6 +87,8 @@ const HealthDataItem = React.memo(({
   </div>
 ))
 
+HealthDataItem.displayName = 'HealthDataItem'
+
 export default function HealthPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
