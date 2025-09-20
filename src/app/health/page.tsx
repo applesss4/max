@@ -79,11 +79,27 @@ export default function BarcodePage() {
         }
       }
       
+      // 根据条形码长度自动识别类型
+      let barcodeType = 'UNKNOWN';
+      const cleanBarcode = barcodeValue.replace(/\s/g, '');
+      
+      if (cleanBarcode.length === 13 && /^\d+$/.test(cleanBarcode)) {
+        barcodeType = 'EAN-13';
+      } else if (cleanBarcode.length === 12 && /^\d+$/.test(cleanBarcode)) {
+        barcodeType = 'UPC-A';
+      } else if (cleanBarcode.length === 8 && /^\d+$/.test(cleanBarcode)) {
+        barcodeType = 'EAN-8';
+      } else if (cleanBarcode.length >= 4 && /^[\x00-\x7F]+$/.test(cleanBarcode)) {
+        barcodeType = 'CODE-128';
+      } else {
+        barcodeType = 'OTHER';
+      }
+      
       // 设置表单数据并显示编辑表单
       setFormData(prev => ({
         ...prev,
         barcode_value: barcodeValue,
-        barcode_type: barcodeValue.length === 13 ? 'EAN-13' : 'CODE-128'
+        barcode_type: barcodeType
       }))
       setShowForm(true)
       setScanMode(false)

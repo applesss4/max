@@ -38,7 +38,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
             videoRef.current,
             (result) => {
               console.log('扫描结果:', result)
-              // 只处理条形码，不处理二维码
+              // 处理条形码，接受多种格式
               if (result.data && isValidBarcode(result.data)) {
                 setScanResult(result.data)
                 onScan(result.data)
@@ -67,6 +67,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           
           // 调整灰度权重以优化条形码识别
           scanner.setGrayscaleWeights(0.2126, 0.7152, 0.0722, false);
+          
+          // 禁用二维码检测以提高条形码识别速度
+          // @ts-ignore
+          scanner._qrWorker?.setDetectQrCodes(false);
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
           const errorMsg = err.name === 'NotAllowedError' 
@@ -93,10 +97,33 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
     }
   }, [isScanning, onScan, onError])
 
-  // 验证是否为有效的条形码（专注13位EAN条形码）
+  // 验证是否为有效的条形码（支持多种格式）
   const isValidBarcode = (data: string): boolean => {
-    // 只接受13位数字的EAN条形码
-    return /^\d{13}$/.test(data);
+    // 移除可能的空格并检查
+    const cleanData = data.replace(/\s/g, '');
+    
+    // 支持多种条形码格式
+    // EAN-13: 13位数字
+    if (/^\d{13}$/.test(cleanData)) {
+      return true;
+    }
+    
+    // EAN-8: 8位数字
+    if (/^\d{8}$/.test(cleanData)) {
+      return true;
+    }
+    
+    // UPC-A: 12位数字
+    if (/^\d{12}$/.test(cleanData)) {
+      return true;
+    }
+    
+    // CODE-128: 可以包含字母、数字和特殊字符
+    if (/^[\x00-\x7F]+$/.test(cleanData) && cleanData.length >= 4) {
+      return true;
+    }
+    
+    return false;
   }
 
   // 控制扫描状态
@@ -179,9 +206,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
               <p className="text-green-700 mt-1 break-all">
                 <span className="font-medium">条形码:</span> {scanResult}
               </p>
-              {scanResult.length === 13 && (
-                <p className="text-sm text-green-600 mt-1">检测到EAN-13条形码</p>
-              )}
+              <p className="text-sm text-green-600 mt-1">
+                长度: {scanResult.replace(/\s/g, '').length} 位
+                {scanResult.replace(/\s/g, '').length === 13 && ' (EAN-13)'}
+                {scanResult.replace(/\s/g, '').length === 12 && ' (UPC-A)'}
+                {scanResult.replace(/\s/g, '').length === 8 && ' (EAN-8)'}
+              </p>
             </div>
             <button
               onClick={clearScanResult}
@@ -221,7 +251,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           提示：将条形码对准扫描框即可自动识别
         </p>
         <p className="text-center mt-1 text-xs text-gray-500">
-          专门优化用于识别EAN-13标准条形码
+          支持EAN-13、EAN-8、UPC-A和CODE-128等多种条形码格式
         </p>
       </div>
     </div>
