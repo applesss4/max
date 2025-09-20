@@ -69,9 +69,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           scanner.setGrayscaleWeights(0.2126, 0.7152, 0.0722, false);
           
           // 禁用二维码检测以提高条形码识别速度
-          // @ts-expect-error - qr-scanner库的内部属性访问
-          if (scanner._qrWorker) {
-            scanner._qrWorker.setDetectQrCodes(false);
+          // 使用类型断言安全访问私有属性
+          try {
+            const scannerWithWorker = scanner as any;
+            if (scannerWithWorker._qrWorker) {
+              scannerWithWorker._qrWorker.setDetectQrCodes(false);
+            }
+          } catch (err: any) {
+            console.warn('无法禁用二维码检测:', err);
           }
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
