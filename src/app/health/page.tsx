@@ -53,20 +53,8 @@ export default function BarcodePage() {
     }
   }, [user, fetchBarcodes])
 
-  // 显示加载状态
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
-          <p className="mt-2 text-cream-text-dark">加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
   // 处理条形码扫描结果
-  const handleScan = async (barcodeValue: string) => {
+  const handleScan = useCallback(async (barcodeValue: string) => {
     try {
       // 检查条形码是否已存在
       if (user) {
@@ -102,12 +90,12 @@ export default function BarcodePage() {
     } catch (error) {
       console.error('处理扫描结果失败:', error)
     }
-  }
+  }, [user])
 
   // 处理扫描错误
-  const handleScanError = (error: string) => {
+  const handleScanError = useCallback((error: string) => {
     console.error('扫描错误:', error)
-  }
+  }, [])
 
   // 处理表单输入变化
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -213,6 +201,18 @@ export default function BarcodePage() {
       minute: '2-digit'
     })
   }, [])
+
+  // 显示加载状态
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
+          <p className="mt-2 text-cream-text-dark">加载中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ProtectedRoute>
