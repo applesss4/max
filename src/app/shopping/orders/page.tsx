@@ -38,27 +38,8 @@ export default function OrdersPage() {
     }
   }, [user])
 
-  // 设置获取订单列表的副作用
-  useEffect(() => {
-    if (user) {
-      fetchOrders()
-    }
-  }, [user, fetchOrders])
-
-  // 显示加载状态
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
-          <p className="mt-2 text-cream-text-dark">加载中...</p>
-        </div>
-      </div>
-    )
-  }
-
   // 查看订单详情
-  const handleViewOrderDetails = async (orderId: string) => {
+  const handleViewOrderDetails = useCallback(async (orderId: string) => {
     if (!user) return
     
     setIsDetailLoading(true)
@@ -71,12 +52,12 @@ export default function OrdersPage() {
     } finally {
       setIsDetailLoading(false)
     }
-  }
+  }, [user])
 
   // 关闭订单详情
-  const handleCloseOrderDetails = () => {
+  const handleCloseOrderDetails = useCallback(() => {
     setSelectedOrder(null)
-  }
+  }, [])
 
   // 获取最近订单的商品价格信息并进行比价
   const fetchPriceComparison = useCallback(async () => {
@@ -172,6 +153,25 @@ export default function OrdersPage() {
       setLatestOrderPrice({});
     }
   }, [user]);
+
+  // 设置获取订单列表的副作用
+  useEffect(() => {
+    if (user) {
+      fetchOrders()
+    }
+  }, [user, fetchOrders])
+
+  // 显示加载状态
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
+          <p className="mt-2 text-cream-text-dark">加载中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ProtectedRoute>

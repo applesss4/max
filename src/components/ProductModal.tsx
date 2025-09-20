@@ -8,7 +8,9 @@ import {
   getProductPricesByProductName,
   getProductByIdWithShop,
   deleteProduct,
-  getUserCategories, // 添加导入获取用户分类的函数
+  getUserCategories,
+  getUserShops, // 添加导入获取用户超市的函数
+  createProduct, // 添加导入创建商品的函数
   type Product
 } from '../services/ecommerceService'
 
@@ -43,9 +45,12 @@ export default function ProductModal({
   const [quantity, setQuantity] = useState(1)
   const [notification, setNotification] = useState<{type: string, message: string} | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [editedPrices, setEditedPrices] = useState<{[key: string]: number}>({}) // 用于编辑不同超市的价格
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]) // 添加分类状态
-  const [editedCategory, setEditedCategory] = useState('') // 添加编辑分类状态
+  const [editedPrices, setEditedPrices] = useState<{[key: string]: number}>({})
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  const [editedCategory, setEditedCategory] = useState('')
+  const [shops, setShops] = useState<{ id: string; name: string }[]>([]) // 添加超市状态
+  const [newShopId, setNewShopId] = useState('') // 添加新超市ID状态
+  const [newPrice, setNewPrice] = useState('') // 添加新价格状态
 
   // 获取商品详情
   const fetchProduct = useCallback(async () => {
@@ -97,6 +102,19 @@ export default function ProductModal({
     }
   }, [user])
 
+  // 获取用户超市
+  const fetchUserShops = useCallback(async () => {
+    if (!user) return
+    
+    try {
+      const { data, error } = await getUserShops(user.id)
+      if (error) throw error
+      setShops(data || [])
+    } catch (error) {
+      console.error('获取超市失败:', error)
+    }
+  }, [user])
+
   // 设置默认分类的副作用
   useEffect(() => {
     if (isOpen && productId) {
@@ -111,12 +129,13 @@ export default function ProductModal({
     }
   }, [isOpen, productId, fetchProduct])
 
-  // 当用户和编辑模式变化时获取分类
+  // 当用户和编辑模式变化时获取分类和超市
   useEffect(() => {
     if (user && isEditing) {
       fetchUserCategories()
+      fetchUserShops() // 获取用户超市
     }
-  }, [user, isEditing, fetchUserCategories])
+  }, [user, isEditing, fetchUserCategories, fetchUserShops])
 
   // 添加到购物车
   const handleAddToCart = useCallback(async () => {
@@ -250,6 +269,71 @@ export default function ProductModal({
     }
   }
 
+  // 添加新超市价格
+  const handleAddNewShopPrice = async () => {
+    if (!product || !newShopId || !newPrice) {
+      setNotification({type: 'error', message: '请选择超市并输入价格'})
+      setTimeout(() => setNotification(null), 3000)
+      return
+    }
+
+    try {
+      // 检查是否已存在该超市的价格
+      const existingProduct = sameProducts.find(p => p.shop_id === newShopId)
+      if (existingProduct) {
+        setNotification({type: 'error', message: '该超市已存在此商品的价格'})
+        setTimeout(() => setNotification(null), 3000)
+        return
+      }
+
+      // 创建新商品记录
+      const newProductData = {
+        name: product.name,
+        description: product.description,
+        price: parseFloat(newPrice),
+        category: product.category,
+        image_url: product.image_url,
+        stock_quantity: product.stock_quantity,
+        shop_id: newShopId
+      }
+
+      const { data, error } = await createProduct(newProductData)
+      if (error) throw error
+
+      // 重新获取商品信息
+      if (product?.name) {
+        const { data: sameProductsData, error: sameProductsError } = await getProductPricesByProductName(product.name)
+        if (!sameProductsError) {
+          const sortedProducts = sameProductsData?.sort((a, b) => (a.price || 0) - (b.price || 0)) || []
+          setSameProducts(sortedProducts)
+          
+          // 更新编辑价格状态
+          const initialEditedPrices: {[key: string]: number} = {}
+          sortedProducts.forEach(p => {
+            initialEditedPrices[p.id] = p.price || 0
+          })
+          setEditedPrices(initialEditedPrices)
+          
+          // 更新当前商品为最低价商品
+          if (sortedProducts.length > 0) {
+            setProduct(sortedProducts[0])
+          }
+        }
+      }
+
+      // 重置表单
+      setNewShopId('')
+      setNewPrice('')
+      
+      setNotification({type: 'success', message: '新超市价格已添加'})
+      setTimeout(() => setNotification(null), 3000)
+    } catch (error) {
+      console.error('添加新超市价格失败:', error)
+      setNotification({type: 'error', message: '添加新超市价格失败'})
+      setTimeout(() => setNotification(null), 3000)
+    }
+  }
+
   // 渲染通知消息
   const renderNotification = () => {
     if (!notification) return null
@@ -364,7 +448,9 @@ export default function ProductModal({
         </div>
         
         <div className="mb-6">
-          <h2 className="text-base font-semibold text-cream-text-dark mb-2">价格编辑</h2>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-base font-semibold text-cream-text-dark">价格编辑</h2>
+          </div>
           <div className="space-y-2">
             {sameProducts.map((sameProduct) => (
               <div 
@@ -384,6 +470,66 @@ export default function ProductModal({
                 />
               </div>
             ))}
+          </div>
+          
+          {/* 添加新超市价格 */}
+          <div className="mt-4 pt-4 border-t border-cream-border">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-cream-text-dark">添加新超市价格</h3>
+              <button
+                onClick={() => {
+                  setNewShopId('')
+                  setNewPrice('')
+                }}
+                className="text-cream-text-dark hover:text-cream-accent"
+                aria-label="清空表单"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-cream-text-dark text-xs font-medium mb-1">超市 *</label>
+                <select
+                  value={newShopId}
+                  onChange={(e) => setNewShopId(e.target.value)}
+                  className="w-full p-2 border border-cream-border rounded-lg focus:ring-2 focus:ring-cream-accent focus:border-transparent text-sm"
+                >
+                  <option value="">请选择超市</option>
+                  {shops
+                    .filter(shop => !sameProducts.some(p => p.shop_id === shop.id)) // 过滤已存在的超市
+                    .map(shop => (
+                      <option key={shop.id} value={shop.id}>{shop.name}</option>
+                    ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-cream-text-dark text-xs font-medium mb-1">价格 (日元) *</label>
+                <input
+                  type="number"
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  className="w-full p-2 border border-cream-border rounded-lg focus:ring-2 focus:ring-cream-accent focus:border-transparent text-sm"
+                  placeholder="请输入价格"
+                />
+              </div>
+              
+              <button
+                onClick={handleAddNewShopPrice}
+                disabled={!newShopId || !newPrice}
+                className={`w-full py-2 px-3 rounded-lg font-medium transition duration-300 text-sm ${
+                  !newShopId || !newPrice
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-cream-accent text-white hover:bg-cream-accent-hover'
+                }`}
+                aria-label="添加新超市价格"
+              >
+                + 添加超市价格
+              </button>
+            </div>
           </div>
         </div>
 
