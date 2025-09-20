@@ -70,7 +70,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           
           // 禁用二维码检测以提高条形码识别速度
           // @ts-expect-error - qr-scanner库的内部属性访问
-          scanner._qrWorker?.setDetectQrCodes(false);
+          if (scanner._qrWorker) {
+            scanner._qrWorker.setDetectQrCodes(false);
+          }
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
           const errorMsg = err.name === 'NotAllowedError' 
