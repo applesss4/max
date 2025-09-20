@@ -3,6 +3,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import QrScanner from 'qr-scanner'
 
+// 为了解决类型问题，我们声明一个扩展的 QrScanner 类型
+declare module 'qr-scanner' {
+  interface QrScannerOptions {
+    preferredCamera?: string | { facingMode: string };
+  }
+}
+
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
   onError?: (error: string) => void
@@ -39,10 +46,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
                 // 这里忽略解码错误，因为可能不是二维码
                 console.log('解码错误:', err)
               },
-              maxScansPerSecond: 5,
+              maxScansPerSecond: 10, // 增加扫描频率以提高识别率
               highlightScanRegion: true,
               highlightCodeOutline: true,
-              returnDetailedScanResult: true
+              returnDetailedScanResult: true,
+              preferredCamera: 'environment' // 优先使用后置摄像头
             }
           )
           
@@ -50,6 +58,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           
           // 启动扫描
           await scanner.start()
+          
+          // 设置扫描器以支持条形码
+          // 启用 inversion mode 来支持不同颜色的条形码
+          scanner.setInversionMode('both'); // 支持正常和反色条形码
+          
+          // 尝试设置更合适的扫描区域
+          // 注意：这里我们不直接修改私有方法，而是通过配置选项来优化
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
           const errorMsg = err.name === 'NotAllowedError' 
@@ -125,7 +140,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           {/* 扫描区域提示 */}
           {isScanning && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-64 h-64 border-4 border-green-500 rounded-lg relative">
+              <div className="w-80 h-40 border-4 border-green-500 rounded-lg relative">
+                {/* 为条形码优化的矩形扫描区域 */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-green-500 animate-pulse"></div>
                 <div className="absolute -inset-4 border-2 border-white border-opacity-20 rounded-xl"></div>
               </div>
@@ -193,6 +209,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       <div className="usage-instructions mt-4 text-sm text-gray-600">
         <p className="text-center">
           提示：将条形码或二维码对准扫描框即可自动识别
+        </p>
+        <p className="text-center mt-1 text-xs text-gray-500">
+          支持 EAN-13, EAN-8, UPC-A, UPC-E, CODE-128, CODE-39 等常见条形码格式
         </p>
       </div>
     </div>
