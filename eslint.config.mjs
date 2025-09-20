@@ -29,7 +29,8 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "off",
       "prefer-const": "off",
       "react/no-unescaped-entities": "off",
-      "@next/next/no-img-element": "off"
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/ban-ts-comment": "off"
     }
   }
 ];
