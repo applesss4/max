@@ -442,7 +442,7 @@ export default function ProductModal({
         {/* 当前商品价格和超市信息 */}
         <div className="mb-5">
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-cream-text-dark">{(product.price || 0).toFixed(2)}日元</span>
+            <span className="text-2xl font-bold text-cream-text-dark">{Math.floor(product.price || 0)}日元</span>
             {product.shop && (
               <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
                 {product.shop.name}
@@ -478,7 +478,7 @@ export default function ProductModal({
                       ? 'text-green-700' 
                       : 'text-cream-text-dark'
                   }`}>
-                    {(sameProduct.price || 0).toFixed(2)}日元
+                    {Math.floor(sameProduct.price || 0)}日元
                   </span>
                 </div>
               ))}

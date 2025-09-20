@@ -234,7 +234,7 @@ export default function ShoppingCartPage() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium text-cream-text-dark text-sm truncate">{item.product?.name}</h3>
                           <p className="text-cream-text-light text-xs truncate">{item.product?.category}</p>
-                          <p className="text-cream-accent font-medium text-sm">{item.product?.price.toFixed(2)}日元</p>
+                          <p className="text-cream-accent font-medium text-sm">{Math.floor(item.product?.price || 0)}日元</p>
                         </div>
                         
                         <div className="flex flex-col items-end space-y-1">
@@ -256,7 +256,7 @@ export default function ShoppingCartPage() {
                           
                           <div className="w-16 text-right">
                             <p className="font-medium text-cream-text-dark text-sm">
-                              {(item.product?.price * item.quantity).toFixed(2)}日元
+                              {Math.floor(item.product?.price * item.quantity)}日元
                             </p>
                           </div>
                           
@@ -283,7 +283,7 @@ export default function ShoppingCartPage() {
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between">
                       <span className="text-cream-text-light text-sm">商品总价</span>
-                      <span className="text-cream-text-dark text-sm">{cartDetails.total_amount.toFixed(2)}日元</span>
+                      <span className="text-cream-text-dark text-sm">{Math.floor(cartDetails.total_amount)}日元</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-cream-text-light text-sm">运费</span>
@@ -295,7 +295,7 @@ export default function ShoppingCartPage() {
                     </div>
                     <div className="border-t border-cream-border pt-2 flex justify-between font-semibold">
                       <span className="text-cream-text-dark text-sm">总计</span>
-                      <span className="text-cream-text-dark text-sm">{cartDetails.total_amount.toFixed(2)}日元</span>
+                      <span className="text-cream-text-dark text-sm">{Math.floor(cartDetails.total_amount)}日元</span>
                     </div>
                   </div>
                   

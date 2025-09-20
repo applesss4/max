@@ -214,7 +214,7 @@ export default function CheckoutPage() {
                                 className="w-12 p-0.5 text-xs border border-cream-border rounded text-cream-text-dark text-right"
                                 placeholder="价格"
                                 min="0"
-                                step="0.01"
+                                step="1"
                               />
                               <span className="ml-0.5 text-cream-text-dark text-xs">日元</span>
                             </div>
@@ -228,7 +228,7 @@ export default function CheckoutPage() {
                       <div className="text-right">
                         <span className="text-cream-text-light text-xs mr-1">小计:</span>
                         <span className="font-semibold text-cream-text-dark text-sm">
-                          {items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0).toFixed(2)}日元
+                          {Math.floor(items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0))}日元
                         </span>
                       </div>
                     </div>
@@ -240,7 +240,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-cream-text-dark font-medium">总计:</span>
                     <span className="text-cream-text-dark font-bold text-lg">
-                      {cartDetails.items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0).toFixed(2)}日元
+                      {Math.floor(cartDetails.items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0))}日元
                     </span>
                   </div>
                 </div>

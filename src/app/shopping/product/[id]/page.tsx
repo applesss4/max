@@ -220,7 +220,7 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="flex items-baseline">
                     <span className="text-3xl font-bold text-cream-text-dark">
-                      {product ? (product as Product).price.toFixed(2) : '0.00'}日元
+                      {product ? Math.floor((product as Product).price) : '0'}日元
                     </span>
                     {productPrices.length > 1 && product && (product as Product).price === lowestPrice && (
                       <span className="ml-2 text-sm text-cream-accent bg-green-100 px-2 py-1 rounded">最优惠</span>
@@ -250,7 +250,7 @@ export default function ProductDetailPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-cream-text-dark font-medium">{(item as Product).price.toFixed(2)}日元</div>
+                          <div className="text-cream-text-dark font-medium">{Math.floor((item as Product).price)}日元</div>
                         </div>
                       ))}
                     </div>

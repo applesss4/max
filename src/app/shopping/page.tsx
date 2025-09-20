@@ -498,7 +498,7 @@ export default function ShoppingPage() {
                       <div className="flex items-center justify-between pt-2 mt-auto">
                         <div>
                           <span className="text-xl font-bold text-cream-text-dark leading-none">
-                            ¥{product.lowest_price.toFixed(0)}
+                            ¥{Math.floor(product.lowest_price)}
                           </span>
                         </div>
                         <button

@@ -4,7 +4,7 @@ import ProtectedRoute from '../../../components/ProtectedRoute'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useState, useEffect, useCallback } from 'react'
-import { getUserShops, createShop, getUserCategories, createCategory, updateCategory, deleteCategory } from '../../../services/ecommerceService'
+import { getUserShops, createShop, getUserCategories, createCategory, updateCategory, deleteCategory, deleteShop } from '../../../services/ecommerceService'
 import { Shop, Category } from '../../../services/ecommerceService'
 
 export default function ShopsManagementPage() {
@@ -69,7 +69,7 @@ export default function ShopsManagementPage() {
   }, [user, activeTab, fetchShops, fetchCategories])
 
   // 添加新超市
-  const handleAddShop = async (e: React.FormEvent) => {
+  const handleAddShop = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!user || !newShopName.trim()) {
@@ -102,10 +102,36 @@ export default function ShopsManagementPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, newShopName, newShopDescription, fetchShops])
+
+  // 删除超市
+  const handleDeleteShop = useCallback(async (shopId: string, shopName: string) => {
+    if (!user) return
+    
+    if (!confirm(`确定要删除超市"${shopName}"吗？此操作不可恢复。`)) {
+      return
+    }
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const { error } = await deleteShop(shopId)
+      
+      if (error) throw error
+      
+      // 更新超市列表
+      await fetchShops()
+    } catch (err) {
+      console.error('删除超市失败:', err)
+      setError('删除超市失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [user, fetchShops])
 
   // 添加新分类
-  const handleAddCategory = async (e: React.FormEvent) => {
+  const handleAddCategory = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!user || !newCategoryName.trim()) {
@@ -138,10 +164,10 @@ export default function ShopsManagementPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, newCategoryName, newCategoryDescription, fetchCategories])
 
   // 更新分类
-  const handleUpdateCategory = async (e: React.FormEvent) => {
+  const handleUpdateCategory = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!user || !isEditingCategory || !isEditingCategory.name.trim()) {
@@ -174,10 +200,10 @@ export default function ShopsManagementPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, isEditingCategory, fetchCategories])
 
   // 删除分类
-  const handleDeleteCategory = async (categoryId: string) => {
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
     if (!user) return
     
     if (!confirm('确定要删除这个分类吗？')) {
@@ -200,7 +226,7 @@ export default function ShopsManagementPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, fetchCategories])
 
   // 显示加载状态
   if (loading) {
@@ -352,12 +378,24 @@ export default function ShopsManagementPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {shops.map(shop => (
                     <div key={shop.id} className="p-4 bg-cream-bg rounded-lg border border-cream-border">
-                      <h3 className="font-medium text-cream-text-dark mb-2">{shop.name}</h3>
-                      {shop.description && (
-                        <p className="text-cream-text-light text-sm mb-3">{shop.description}</p>
-                      )}
-                      <div className="text-xs text-cream-text-light">
-                        创建时间: {new Date(shop.created_at).toLocaleDateString('zh-CN')}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium text-cream-text-dark mb-2">{shop.name}</h3>
+                          {shop.description && (
+                            <p className="text-cream-text-light text-sm mb-3">{shop.description}</p>
+                          )}
+                          <div className="text-xs text-cream-text-light">
+                            创建时间: {new Date(shop.created_at).toLocaleDateString('zh-CN')}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteShop(shop.id, shop.name)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   ))}

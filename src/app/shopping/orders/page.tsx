@@ -246,8 +246,8 @@ export default function OrdersPage() {
                         </p>
                       </div>
                       
-                      <div className="flex items-center justify-between md:justify-end mt-3 md:mt-0">
-                        <span className="font-medium text-cream-text-dark mr-4">总计: {order.total_amount.toFixed(2)}日元</span>
+                      <div className="flex items-center justify-between mt-3 md:mt-0">
+                        <span className="font-medium text-cream-text-dark mr-4">总计: {Math.floor(order.total_amount)}日元</span>
                         <button
                           onClick={() => handleViewOrderDetails(order.id)}
                           className="text-sm text-cream-accent hover:text-cream-accent-hover"
@@ -301,7 +301,7 @@ export default function OrdersPage() {
                       <div>
                         <p className="text-xs text-cream-text-light">总金额</p>
                         <p className="text-cream-text-dark font-medium text-sm">
-                          {selectedOrder.order.total_amount.toFixed(2)}日元
+                          {Math.floor(selectedOrder.order.total_amount)}日元
                         </p>
                       </div>
                     </div>
@@ -352,7 +352,7 @@ export default function OrdersPage() {
                               <div className="flex items-center space-x-2 flex-shrink-0">
                                 <span className="text-cream-text-dark text-sm">x {item.quantity}</span>
                                 <span className="font-medium text-cream-text-dark w-16 text-right text-sm">
-                                  {item.price.toFixed(2)}日元
+                                  {Math.floor(item.price)}日元
                                 </span>
                               </div>
                             </div>
@@ -364,7 +364,7 @@ export default function OrdersPage() {
                           <div className="text-right">
                             <span className="text-cream-text-light mr-2">小计:</span>
                             <span className="font-semibold text-cream-text-dark">
-                              {items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}日元
+                              {Math.floor(items.reduce((sum, item) => sum + item.price * item.quantity, 0))}日元
                             </span>
                           </div>
                         </div>
@@ -376,7 +376,7 @@ export default function OrdersPage() {
                     <div className="text-right">
                       <p className="text-cream-text-light">商品总价</p>
                       <p className="text-lg font-bold text-cream-text-dark">
-                        {selectedOrder.order.total_amount.toFixed(2)}日元
+                        {Math.floor(selectedOrder.order.total_amount)}日元
                       </p>
                     </div>
                   </div>

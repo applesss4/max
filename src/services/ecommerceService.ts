@@ -293,6 +293,16 @@ export const createShop = async (userId: string, name: string, description?: str
   return { data, error }
 }
 
+// 删除超市
+export const deleteShop = async (id: string): Promise<{ data: null, error: any }> => {
+  const { data, error } = await supabase
+    .from('shops')
+    .delete()
+    .eq('id', id)
+  
+  return { data, error }
+}
+
 // ==================== 分类相关API ====================
 
 // 获取用户分类列表
