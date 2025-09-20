@@ -287,3 +287,19 @@ export interface Database {
     }
   }
 }
+
+// 添加条形码类型定义
+export interface Barcode {
+  id: string
+  user_id: string
+  barcode_value: string
+  barcode_type: string
+  product_name: string | null
+  product_description: string | null
+  product_price: number | null
+  product_category: string | null
+  product_image_url: string | null
+  scanned_at: string
+  created_at: string
+  updated_at: string
+}

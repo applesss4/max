@@ -15,11 +15,6 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 为待办事项表创建索引
-CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
-CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
-CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
-
 -- 1.2 健康追踪表
 CREATE TABLE IF NOT EXISTS health_tracks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -38,10 +33,6 @@ CREATE TABLE IF NOT EXISTS health_tracks (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 为健康追踪表创建索引
-CREATE INDEX IF NOT EXISTS idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX IF NOT EXISTS idx_health_tracks_tracked_date ON health_tracks(tracked_date);
-
 -- 1.3 用户个人资料表
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -52,9 +43,6 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   bio TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- 为用户个人资料表创建索引
-CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
 
 -- 1.4 排班表
 CREATE TABLE IF NOT EXISTS work_schedules (
@@ -70,10 +58,6 @@ CREATE TABLE IF NOT EXISTS work_schedules (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 为排班表创建索引
-CREATE INDEX IF NOT EXISTS idx_work_schedules_user_id ON work_schedules(user_id);
-CREATE INDEX IF NOT EXISTS idx_work_schedules_work_date ON work_schedules(work_date);
-
 -- 1.5 店铺时薪表
 CREATE TABLE IF NOT EXISTS shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -85,7 +69,23 @@ CREATE TABLE IF NOT EXISTS shop_hourly_rates (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.6 电商表结构
+-- 1.6 条形码表
+CREATE TABLE IF NOT EXISTS barcodes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  barcode_value VARCHAR(255) NOT NULL, -- 条形码值
+  barcode_type VARCHAR(50) NOT NULL, -- 条形码类型 (如: EAN-13, QR Code等)
+  product_name VARCHAR(255), -- 产品名称
+  product_description TEXT, -- 产品描述
+  product_price DECIMAL(10,2), -- 产品价格
+  product_category VARCHAR(100), -- 产品分类
+  product_image_url TEXT, -- 产品图片URL
+  scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- 扫描时间
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 1.7 电商表结构
 -- 商品表
 CREATE TABLE IF NOT EXISTS products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -143,8 +143,19 @@ CREATE TABLE IF NOT EXISTS order_items (
 );
 
 -- 为各表创建索引
+CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
+CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
+CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
+CREATE INDEX IF NOT EXISTS idx_health_tracks_user_id ON health_tracks(user_id);
+CREATE INDEX IF NOT EXISTS idx_health_tracks_tracked_date ON health_tracks(tracked_date);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
+CREATE INDEX IF NOT EXISTS idx_work_schedules_user_id ON work_schedules(user_id);
+CREATE INDEX IF NOT EXISTS idx_work_schedules_work_date ON work_schedules(work_date);
 CREATE INDEX IF NOT EXISTS idx_shop_hourly_rates_user_id ON shop_hourly_rates(user_id);
 CREATE INDEX IF NOT EXISTS idx_shop_hourly_rates_shop_name ON shop_hourly_rates(shop_name);
+CREATE INDEX IF NOT EXISTS idx_barcodes_user_id ON barcodes(user_id);
+CREATE INDEX IF NOT EXISTS idx_barcodes_barcode_value ON barcodes(barcode_value);
+CREATE INDEX IF NOT EXISTS idx_barcodes_scanned_at ON barcodes(scanned_at);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_products_shop_id ON products(shop_id);
 CREATE INDEX IF NOT EXISTS idx_shopping_carts_user_id ON shopping_carts(user_id);
@@ -161,6 +172,7 @@ ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE barcodes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_carts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
@@ -172,11 +184,11 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "用户只能查看自己的待办事项" ON todos
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.3 健康追踪表策略
+-- 3.2 健康追踪表策略
 CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.4 用户个人资料表策略
+-- 3.3 用户个人资料表策略
 CREATE POLICY "用户可以查看所有公开资料" ON user_profiles
   FOR SELECT USING (true);
   
@@ -186,13 +198,26 @@ CREATE POLICY "用户只能更新自己的资料" ON user_profiles
 CREATE POLICY "用户只能插入自己的资料" ON user_profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- 3.5 排班表策略
+-- 3.4 排班表策略
 CREATE POLICY "用户只能查看自己的排班" ON work_schedules
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.6 店铺时薪表策略
+-- 3.5 店铺时薪表策略
 CREATE POLICY "用户只能查看自己的店铺时薪" ON shop_hourly_rates
   FOR ALL USING (auth.uid() = user_id);
+
+-- 3.6 条形码表策略
+CREATE POLICY "用户可以查看自己的条形码" ON barcodes
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "用户可以插入自己的条形码" ON barcodes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "用户可以更新自己的条形码" ON barcodes
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "用户可以删除自己的条形码" ON barcodes
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- 3.7 商品表策略
 CREATE POLICY "用户可以查看自己店铺的商品" ON products
@@ -268,6 +293,11 @@ CREATE TRIGGER IF NOT EXISTS update_shop_hourly_rates_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER IF NOT EXISTS update_barcodes_updated_at 
+  BEFORE UPDATE ON barcodes 
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER IF NOT EXISTS update_products_updated_at 
   BEFORE UPDATE ON products 
   FOR EACH ROW 
@@ -316,6 +346,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE health_tracks;
 ALTER PUBLICATION supabase_realtime ADD TABLE user_profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE work_schedules;
 ALTER PUBLICATION supabase_realtime ADD TABLE shop_hourly_rates;
+ALTER PUBLICATION supabase_realtime ADD TABLE barcodes;
 ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE shopping_carts;
 ALTER PUBLICATION supabase_realtime ADD TABLE cart_items;
@@ -340,6 +371,10 @@ VALUES ('用户ID', '便利店', '2025-09-20', '08:00:00', '16:00:00');
 INSERT INTO shop_hourly_rates (user_id, shop_name, day_shift_rate, night_shift_rate)
 VALUES ('用户ID', '便利店', 15.00, 20.00);
 
+-- 创建条形码记录
+INSERT INTO barcodes (user_id, barcode_value, barcode_type, product_name, product_price)
+VALUES ('用户ID', '1234567890123', 'EAN-13', '示例产品', 29.99);
+
 -- 9.2 查询操作 (Read)
 -- 查询用户的所有待办事项
 SELECT * FROM todos WHERE user_id = '用户ID' ORDER BY created_at DESC;
@@ -360,6 +395,11 @@ ORDER BY work_date;
 SELECT * FROM shop_hourly_rates 
 WHERE user_id = '用户ID' 
 ORDER BY shop_name;
+
+-- 查询用户的条形码记录
+SELECT * FROM barcodes 
+WHERE user_id = '用户ID' 
+ORDER BY scanned_at DESC;
 
 -- 9.3 更新操作 (Update)
 -- 更新待办事项状态
@@ -382,6 +422,11 @@ UPDATE shop_hourly_rates
 SET day_shift_rate = 16.00, night_shift_rate = 22.00
 WHERE id = '时薪设置ID' AND user_id = '用户ID';
 
+-- 更新条形码信息
+UPDATE barcodes 
+SET product_name = '更新的产品名称', product_price = 39.99
+WHERE id = '条形码ID' AND user_id = '用户ID';
+
 -- 9.4 删除操作 (Delete)
 -- 删除待办事项
 DELETE FROM todos WHERE id = '待办事项ID' AND user_id = '用户ID';
@@ -395,6 +440,9 @@ DELETE FROM work_schedules WHERE id = '排班ID' AND user_id = '用户ID';
 -- 删除店铺时薪设置
 DELETE FROM shop_hourly_rates WHERE id = '时薪设置ID' AND user_id = '用户ID';
 
+-- 删除条形码记录
+DELETE FROM barcodes WHERE id = '条形码ID' AND user_id = '用户ID';
+
 -- 10. 实时监控查询示例
 -- 订阅待办事项的实时更新
 -- 在应用代码中使用:
@@ -405,11 +453,11 @@ DELETE FROM shop_hourly_rates WHERE id = '时薪设置ID' AND user_id = '用户I
 --   })
 --   .subscribe()
 
--- 订阅排班信息的实时更新
--- const realtimeSchedules = supabase
---   .from('work_schedules')
+-- 订阅条形码记录的实时更新
+-- const realtimeBarcodes = supabase
+--   .from('barcodes')
 --   .on('*', payload => {
---     console.log('排班信息变更:', payload)
+--     console.log('条形码记录变更:', payload)
 --   })
 --   .subscribe()
 
@@ -439,3 +487,8 @@ FROM work_schedules
 WHERE user_id = '用户ID' 
 AND work_date >= DATE_TRUNC('month', CURRENT_DATE)
 AND work_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month';
+
+-- 统计用户条形码记录数量
+SELECT COUNT(*) as total_barcodes
+FROM barcodes 
+WHERE user_id = '用户ID';
