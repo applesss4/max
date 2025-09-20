@@ -7,7 +7,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { 
   getUserOrders,
   getOrderDetails,
-  getAllProductsWithPrices
+  getAllProductsWithPrices,
+  deleteOrder // 添加删除订单函数
 } from '../../../services/ecommerceService'
 import { Order, OrderItem } from '../../../services/ecommerceService'
 
@@ -21,6 +22,8 @@ export default function OrdersPage() {
   const [priceComparison, setPriceComparison] = useState<{[key: string]: {priceDiff: number, shopName: string, isLower: boolean}} | null>(null) // 比价结果状态
   const [isPriceComparisonModalOpen, setIsPriceComparisonModalOpen] = useState(false) // 比价详情模态框状态
   const [latestOrderPrice, setLatestOrderPrice] = useState<{[key: string]: number}>({}) // 最新订单价格
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false) // 删除确认模态框状态
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null) // 待删除的订单ID
 
   // 获取用户订单列表
   const fetchOrders = useCallback(async () => {
@@ -58,6 +61,41 @@ export default function OrdersPage() {
   const handleCloseOrderDetails = useCallback(() => {
     setSelectedOrder(null)
   }, [])
+
+  // 打开删除确认模态框
+  const handleOpenDeleteConfirm = (orderId: string) => {
+    setOrderToDelete(orderId)
+    setIsDeleteConfirmOpen(true)
+  }
+
+  // 关闭删除确认模态框
+  const handleCloseDeleteConfirm = () => {
+    setIsDeleteConfirmOpen(false)
+    setOrderToDelete(null)
+  }
+
+  // 确认删除订单
+  const handleConfirmDeleteOrder = async () => {
+    if (!user || !orderToDelete) return
+    
+    try {
+      const { error } = await deleteOrder(orderToDelete)
+      if (error) throw error
+      
+      // 从本地状态中移除已删除的订单
+      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderToDelete))
+      
+      // 如果正在查看的订单被删除，则关闭详情模态框
+      if (selectedOrder && selectedOrder.order.id === orderToDelete) {
+        setSelectedOrder(null)
+      }
+      
+      // 关闭确认模态框
+      handleCloseDeleteConfirm()
+    } catch (error) {
+      console.error('删除订单失败:', error)
+    }
+  }
 
   // 获取最近订单的商品价格信息并进行比价
   const fetchPriceComparison = useCallback(async () => {
@@ -198,9 +236,10 @@ export default function OrdersPage() {
                   title="比价"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </button>
+
               </div>
             </div>
           </div>
@@ -248,12 +287,20 @@ export default function OrdersPage() {
                       
                       <div className="flex items-center justify-between mt-3 md:mt-0">
                         <span className="font-medium text-cream-text-dark mr-4">总计: {Math.floor(order.total_amount)}日元</span>
-                        <button
-                          onClick={() => handleViewOrderDetails(order.id)}
-                          className="text-sm text-cream-accent hover:text-cream-accent-hover"
-                        >
-                          查看详情
-                        </button>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleViewOrderDetails(order.id)}
+                            className="text-sm text-cream-accent hover:text-cream-accent-hover"
+                          >
+                            查看详情
+                          </button>
+                          <button
+                            onClick={() => handleOpenDeleteConfirm(order.id)}
+                            className="text-sm text-red-500 hover:text-red-700"
+                          >
+                            删除
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -372,12 +419,25 @@ export default function OrdersPage() {
                     ))
                   })()}
                   
-                  <div className="mt-6 pt-4 border-t border-cream-border flex justify-end">
-                    <div className="text-right">
-                      <p className="text-cream-text-light">商品总价</p>
-                      <p className="text-lg font-bold text-cream-text-dark">
+                  {/* 费用明细 */}
+                  <div className="mt-6 pt-4 border-t border-cream-border space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-cream-text-dark">商品总价:</span>
+                      <span className="text-cream-text-dark">
+                        {Math.floor(selectedOrder.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}日元
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-cream-text-dark">税费 (8%):</span>
+                      <span className="text-cream-text-dark">
+                        {Math.floor(selectedOrder.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 0.08)}日元
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-cream-border">
+                      <span className="text-cream-text-dark font-medium">总计:</span>
+                      <span className="text-lg font-bold text-cream-text-dark">
                         {Math.floor(selectedOrder.order.total_amount)}日元
-                      </p>
+                      </span>
                     </div>
                   </div>
                 </>
@@ -437,6 +497,44 @@ export default function OrdersPage() {
                     <p className="text-cream-text-dark">暂无价格比较信息</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 删除订单确认模态框 */}
+        {isDeleteConfirmOpen && (
+          <div className="fixed inset-0 bg-cream-bg bg-opacity-70 flex items-center justify-center p-2 z-50">
+            <div className="bg-cream-card rounded-2xl shadow-lg p-6 w-full max-w-md border border-cream-border">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-cream-text-dark">确认删除订单</h2>
+                <button
+                  onClick={handleCloseDeleteConfirm}
+                  className="text-cream-text-light hover:text-cream-text"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <p className="text-cream-text-dark mb-6">
+                您确定要删除此订单吗？此操作无法撤销。
+              </p>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCloseDeleteConfirm}
+                  className="px-4 py-2 text-sm font-medium text-cream-text-dark bg-cream-bg hover:bg-cream-border rounded-lg transition duration-300"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleConfirmDeleteOrder}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition duration-300"
+                >
+                  确认删除
+                </button>
               </div>
             </div>
           </div>

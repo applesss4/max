@@ -18,6 +18,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingPrices, setEditingPrices] = useState<{[key: string]: number}>({}) // 用于编辑商品价格
+  const TAX_RATE = 0.08 // 8% 税率
 
   // 获取购物车数据
   const fetchCart = useCallback(async () => {
@@ -69,6 +70,25 @@ export default function CheckoutPage() {
     const newEditingPrices = { ...editingPrices }
     newEditingPrices[cartItemId] = parseFloat(value) || 0
     setEditingPrices(newEditingPrices)
+  }
+
+  // 计算商品总价（不含税）
+  const calculateSubtotal = () => {
+    if (!cartDetails) return 0
+    return cartDetails.items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0)
+  }
+
+  // 计算税费
+  const calculateTax = () => {
+    const subtotal = calculateSubtotal()
+    return subtotal * TAX_RATE
+  }
+
+  // 计算总价（含税）
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal()
+    const tax = calculateTax()
+    return subtotal + tax
   }
 
   // 提交订单
@@ -134,6 +154,9 @@ export default function CheckoutPage() {
   }
 
   const groupedItems = groupItemsByShop()
+  const subtotal = calculateSubtotal()
+  const tax = calculateTax()
+  const total = calculateTotal()
 
   return (
     <ProtectedRoute>
@@ -235,12 +258,20 @@ export default function CheckoutPage() {
                   </div>
                 ))}
                 
-                {/* 总计信息 */}
-                <div className="mt-6 pt-4 border-t border-cream-border">
-                  <div className="flex justify-between items-center">
+                {/* 费用明细 */}
+                <div className="mt-6 pt-4 border-t border-cream-border space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-cream-text-dark text-sm">商品总价:</span>
+                    <span className="text-cream-text-dark text-sm">{Math.floor(subtotal)}日元</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cream-text-dark text-sm">税费 (8%):</span>
+                    <span className="text-cream-text-dark text-sm">{Math.floor(tax)}日元</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-cream-border">
                     <span className="text-cream-text-dark font-medium">总计:</span>
                     <span className="text-cream-text-dark font-bold text-lg">
-                      {Math.floor(cartDetails.items.reduce((sum, item) => sum + (editingPrices[item.id] || 0) * item.quantity, 0))}日元
+                      {Math.floor(total)}日元
                     </span>
                   </div>
                 </div>

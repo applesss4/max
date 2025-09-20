@@ -612,11 +612,16 @@ export const createOrder = async (
       throw new Error('购物车为空，无法创建订单')
     }
     
+    // 计算含税总金额（商品总价 + 8%税费）
+    const subtotal = cartDetails.items.reduce((sum, item) => sum + item.product!.price * item.quantity, 0)
+    const tax = subtotal * 0.08
+    const totalAmount = subtotal + tax
+    
     // 开始数据库事务
     const { data: order, error: orderError } = await supabase.rpc('create_order_with_items', {
       user_id: userId,
       shipping_address: shippingAddress,
-      total_amount: cartDetails.total_amount
+      total_amount: totalAmount
     })
     
     if (orderError) throw orderError
@@ -708,6 +713,21 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
     return { data, error }
   } catch (error) {
     console.error('更新订单状态失败:', error)
+    return { data: null, error }
+  }
+}
+
+// 删除订单
+export const deleteOrder = async (orderId: string): Promise<{ data: null, error: any }> => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId)
+    
+    return { data, error }
+  } catch (error) {
+    console.error('删除订单失败:', error)
     return { data: null, error }
   }
 }
