@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
@@ -35,13 +35,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
               disableFlip: false, // 不禁用翻转
               // 启用多种条形码格式支持
               formatsToSupport: [
-                Html5Qrcode.SupportedFormats.QR_CODE,
-                Html5Qrcode.SupportedFormats.EAN_13,
-                Html5Qrcode.SupportedFormats.EAN_8,
-                Html5Qrcode.SupportedFormats.UPC_A,
-                Html5Qrcode.SupportedFormats.UPC_E,
-                Html5Qrcode.SupportedFormats.CODE_128,
-                Html5Qrcode.SupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
               ]
             },
             false // 不显示选择文件按钮
