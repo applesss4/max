@@ -12,8 +12,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
   const scannerContainerRef = useRef<HTMLDivElement>(null)
+
+  // 检查是否为移动设备
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  }
 
   // 初始化扫描器
   useEffect(() => {
@@ -22,17 +28,25 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
     const initScanner = async () => {
       if (scannerContainerRef.current && !scannerRef.current) {
         try {
+          setIsLoading(true)
           // 清空容器
           scannerContainerRef.current.innerHTML = ''
+          
+          // 根据设备类型调整扫描区域
+          const isMobileDevice = isMobile()
+          const qrBoxSize = isMobileDevice 
+            ? { width: 250, height: 250 } 
+            : { width: 300, height: 150 }
           
           // 创建扫描器实例
           scanner = new Html5QrcodeScanner(
             'barcode-scanner-container',
             {
-              fps: 20, // 设置扫描频率为每秒20次
-              qrbox: { width: 300, height: 150 }, // 设置扫描框大小
-              aspectRatio: 1.0, // 设置宽高比
-              disableFlip: false, // 不禁用翻转
+              fps: 10, // 降低FPS以提高移动设备性能
+              qrbox: qrBoxSize,
+              aspectRatio: 1.0,
+              disableFlip: false,
+              rememberLastUsedCamera: true, // 记住上次使用的摄像头
               // 启用多种条形码格式支持
               formatsToSupport: [
                 Html5QrcodeSupportedFormats.QR_CODE,
@@ -58,25 +72,41 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
                 setScanResult(decodedText)
                 onScan(decodedText)
                 // 扫描成功后停止扫描
-                if (scannerRef.current) {
-                  scannerRef.current.clear()
-                }
+                stopScanner()
               }
             },
             (errorMessage) => {
-              // 这里忽略解码错误，因为可能不是条形码
               console.log('解码错误:', errorMessage)
+              // 只在严重错误时显示错误信息
+              if (errorMessage.includes('Permission') || errorMessage.includes('permission')) {
+                const errorMsg = '请允许访问摄像头权限才能使用扫描功能'
+                setError(errorMsg)
+                if (onError) {
+                  onError(errorMsg)
+                }
+              }
             }
           )
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
-          const errorMsg = err.name === 'NotAllowedError' 
-            ? '请允许访问摄像头权限' 
-            : (err.message || '无法访问摄像头，请确保已授予权限')
+          let errorMsg = '无法初始化摄像头，请确保已授予权限并刷新页面重试'
+          
+          if (err.name === 'NotAllowedError') {
+            errorMsg = '请允许访问摄像头权限才能使用扫描功能'
+          } else if (err.name === 'NotFoundError' || err.message.includes('NotFoundError')) {
+            errorMsg = '未检测到可用的摄像头设备'
+          } else if (err.name === 'NotReadableError') {
+            errorMsg = '摄像头正在被其他应用占用，请关闭其他应用后重试'
+          } else if (err.name === 'OverconstrainedError') {
+            errorMsg = '摄像头不支持当前配置，请尝试刷新页面'
+          }
+          
           setError(errorMsg)
           if (onError) {
             onError(errorMsg)
           }
+        } finally {
+          setIsLoading(false)
         }
       }
     }
@@ -84,23 +114,28 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
     if (isScanning) {
       initScanner()
     } else {
-      // 停止扫描
-      if (scannerRef.current) {
-        scannerRef.current.clear()
-        scannerRef.current = null
-      }
-      if (scannerContainerRef.current) {
-        scannerContainerRef.current.innerHTML = ''
-      }
+      stopScanner()
     }
 
     return () => {
-      if (scanner) {
-        scanner.clear()
-        scannerRef.current = null
-      }
+      stopScanner()
     }
   }, [isScanning, onScan, onError])
+
+  // 停止扫描器
+  const stopScanner = () => {
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.clear()
+      } catch (err) {
+        console.log('停止扫描器时出现错误:', err)
+      }
+      scannerRef.current = null
+    }
+    if (scannerContainerRef.current) {
+      scannerContainerRef.current.innerHTML = ''
+    }
+  }
 
   // 验证是否为有效的条形码（支持多种格式）
   const isValidBarcode = (data: string): boolean => {
@@ -175,8 +210,18 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
             className="w-full h-full"
           />
           
+          {/* 加载状态覆盖层 */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+              <div className="text-white text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mb-2"></div>
+                <p>正在初始化摄像头...</p>
+              </div>
+            </div>
+          )}
+          
           {/* 状态覆盖层 */}
-          {!isScanning && (
+          {!isScanning && !isLoading && (
             <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
               <p className="text-white text-center">
                 {error ? (
@@ -217,9 +262,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       )}
       
       {/* 错误信息显示 */}
-      {error && !scanResult && (
+      {error && !scanResult && !isLoading && (
         <div className="error-message mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700">{error}</p>
+          {error.includes('权限') && (
+            <p className="text-red-600 text-sm mt-2">
+              解决方法：请在浏览器设置中允许摄像头权限，然后刷新页面重试
+            </p>
+          )}
         </div>
       )}
       
@@ -227,14 +277,23 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       <div className="scanner-controls mt-4 flex justify-center">
         <button
           onClick={toggleScanning}
-          disabled={!!error}
+          disabled={isLoading}
           className={`px-6 py-3 rounded-lg font-medium ${
             isScanning 
               ? 'bg-red-500 hover:bg-red-600 text-white' 
               : 'bg-green-500 hover:bg-green-600 text-white disabled:bg-gray-400'
-          } transition-colors`}
+          } transition-colors flex items-center`}
         >
-          {isScanning ? '停止扫描' : '开始扫描'}
+          {isLoading ? (
+            <>
+              <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
+              初始化中...
+            </>
+          ) : isScanning ? (
+            '停止扫描'
+          ) : (
+            '开始扫描'
+          )}
         </button>
       </div>
       
@@ -245,6 +304,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
         </p>
         <p className="text-center mt-1 text-xs text-gray-500">
           支持EAN-13、EAN-8、UPC-A、UPC-E、CODE-128、CODE-39和QR码等多种格式
+        </p>
+        <p className="text-center mt-1 text-xs text-gray-500">
+          移动端使用时请确保已授予摄像头权限
         </p>
       </div>
     </div>
