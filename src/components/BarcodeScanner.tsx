@@ -13,6 +13,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [permissionRequested, setPermissionRequested] = useState(false)
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
   const scannerContainerRef = useRef<HTMLDivElement>(null)
 
@@ -29,6 +30,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       if (scannerContainerRef.current && !scannerRef.current) {
         try {
           setIsLoading(true)
+          setError(null)
           // 清空容器
           scannerContainerRef.current.innerHTML = ''
           
@@ -78,7 +80,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
             (errorMessage) => {
               console.log('解码错误:', errorMessage)
               // 只在严重错误时显示错误信息
-              if (errorMessage.includes('Permission') || errorMessage.includes('permission')) {
+              if (errorMessage.includes('Permission') || errorMessage.includes('permission') || errorMessage.includes('权限')) {
                 const errorMsg = '请允许访问摄像头权限才能使用扫描功能'
                 setError(errorMsg)
                 if (onError) {
@@ -87,11 +89,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
               }
             }
           )
+          
+          setPermissionRequested(true)
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
           let errorMsg = '无法初始化摄像头，请确保已授予权限并刷新页面重试'
           
-          if (err.name === 'NotAllowedError') {
+          if (err.name === 'NotAllowedError' || err.message.includes('permission')) {
             errorMsg = '请允许访问摄像头权限才能使用扫描功能'
           } else if (err.name === 'NotFoundError' || err.message.includes('NotFoundError')) {
             errorMsg = '未检测到可用的摄像头设备'
@@ -115,6 +119,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       initScanner()
     } else {
       stopScanner()
+      setPermissionRequested(false)
     }
 
     return () => {
@@ -178,6 +183,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       setIsScanning(false)
       setScanResult(null)
       setError(null)
+      setPermissionRequested(false)
     } else {
       // 开始扫描
       try {
@@ -210,8 +216,20 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
             className="w-full h-full"
           />
           
+          {/* 权限请求提示 */}
+          {permissionRequested && isScanning && !error && (
+            <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-10">
+              <div className="text-white text-center p-4">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mb-4"></div>
+                <h3 className="text-xl font-medium mb-2">请求摄像头权限</h3>
+                <p className="mb-2">请在浏览器权限请求弹窗中点击"允许"</p>
+                <p className="text-sm text-gray-300">如果未显示弹窗，请检查浏览器地址栏的摄像头权限设置</p>
+              </div>
+            </div>
+          )}
+          
           {/* 加载状态覆盖层 */}
-          {isLoading && (
+          {isLoading && !permissionRequested && (
             <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mb-2"></div>
@@ -266,9 +284,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
         <div className="error-message mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-700">{error}</p>
           {error.includes('权限') && (
-            <p className="text-red-600 text-sm mt-2">
-              解决方法：请在浏览器设置中允许摄像头权限，然后刷新页面重试
-            </p>
+            <div className="mt-2">
+              <p className="text-red-600 text-sm">
+                解决方法：
+              </p>
+              <ol className="text-red-600 text-sm list-decimal list-inside mt-1 space-y-1">
+                <li>刷新页面后再次点击"开始扫描"</li>
+                <li>在浏览器权限弹窗中点击"允许"</li>
+                <li>如未显示弹窗，请点击浏览器地址栏中的摄像头图标并选择"允许"</li>
+                <li>如仍无法解决，请检查系统设置中的浏览器摄像头权限</li>
+              </ol>
+            </div>
           )}
         </div>
       )}
