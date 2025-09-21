@@ -1,14 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import QrScanner from 'qr-scanner'
-
-// 为了解决类型问题，我们声明一个扩展的 QrScanner 类型
-declare module 'qr-scanner' {
-  interface QrScannerOptions {
-    preferredCamera?: string | { facingMode: string };
-  }
-}
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
@@ -19,65 +12,62 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const scannerRef = useRef<QrScanner | null>(null)
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+  const scannerContainerRef = useRef<HTMLDivElement>(null)
 
   // 初始化扫描器
   useEffect(() => {
-    let scanner: QrScanner | null = null
+    let scanner: Html5QrcodeScanner | null = null
 
     const initScanner = async () => {
-      if (videoRef.current && !scannerRef.current) {
+      if (scannerContainerRef.current && !scannerRef.current) {
         try {
-          // 检查浏览器是否支持所需API
-          if (!navigator.mediaDevices || !window.MediaStream) {
-            throw new Error('浏览器不支持摄像头功能')
-          }
-
-          scanner = new QrScanner(
-            videoRef.current,
-            (result) => {
-              console.log('扫描结果:', result)
-              // 处理条形码，接受多种格式
-              if (result.data && isValidBarcode(result.data)) {
-                setScanResult(result.data)
-                onScan(result.data)
-              }
-            },
+          // 清空容器
+          scannerContainerRef.current.innerHTML = ''
+          
+          // 创建扫描器实例
+          scanner = new Html5QrcodeScanner(
+            'barcode-scanner-container',
             {
-              onDecodeError: (err) => {
-                // 这里忽略解码错误，因为可能不是条形码
-                console.log('解码错误:', err)
-              },
-              maxScansPerSecond: 20, // 设置扫描频率为每秒20次以提高识别率
-              highlightScanRegion: true,
-              highlightCodeOutline: true,
-              returnDetailedScanResult: true,
-              preferredCamera: 'environment' // 优先使用后置摄像头
-            }
+              fps: 20, // 设置扫描频率为每秒20次
+              qrbox: { width: 300, height: 150 }, // 设置扫描框大小
+              aspectRatio: 1.0, // 设置宽高比
+              disableFlip: false, // 不禁用翻转
+              // 启用多种条形码格式支持
+              formatsToSupport: [
+                Html5Qrcode.SupportedFormats.QR_CODE,
+                Html5Qrcode.SupportedFormats.EAN_13,
+                Html5Qrcode.SupportedFormats.EAN_8,
+                Html5Qrcode.SupportedFormats.UPC_A,
+                Html5Qrcode.SupportedFormats.UPC_E,
+                Html5Qrcode.SupportedFormats.CODE_128,
+                Html5Qrcode.SupportedFormats.CODE_39,
+              ]
+            },
+            false // 不显示选择文件按钮
           )
           
           scannerRef.current = scanner
           
-          // 启动扫描
-          await scanner.start()
-          
-          // 设置扫描器以专门支持条形码
-          scanner.setInversionMode('both'); // 支持正常和反色条形码
-          
-          // 调整灰度权重以优化条形码识别
-          scanner.setGrayscaleWeights(0.2126, 0.7152, 0.0722, false);
-          
-          // 禁用二维码检测以提高条形码识别速度
-          // 使用类型断言安全访问私有属性
-          try {
-            const scannerWithWorker = scanner as any;
-            if (scannerWithWorker._qrWorker) {
-              scannerWithWorker._qrWorker.setDetectQrCodes(false);
+          // 渲染扫描器
+          scanner.render(
+            (decodedText, decodedResult) => {
+              console.log('扫描结果:', decodedText, decodedResult)
+              // 处理条形码，接受多种格式
+              if (decodedText && isValidBarcode(decodedText)) {
+                setScanResult(decodedText)
+                onScan(decodedText)
+                // 扫描成功后停止扫描
+                if (scannerRef.current) {
+                  scannerRef.current.clear()
+                }
+              }
+            },
+            (errorMessage) => {
+              // 这里忽略解码错误，因为可能不是条形码
+              console.log('解码错误:', errorMessage)
             }
-          } catch (err: any) {
-            console.warn('无法禁用二维码检测:', err);
-          }
+          )
         } catch (err: any) {
           console.error('初始化扫描器失败:', err)
           const errorMsg = err.name === 'NotAllowedError' 
@@ -93,12 +83,20 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
 
     if (isScanning) {
       initScanner()
+    } else {
+      // 停止扫描
+      if (scannerRef.current) {
+        scannerRef.current.clear()
+        scannerRef.current = null
+      }
+      if (scannerContainerRef.current) {
+        scannerContainerRef.current.innerHTML = ''
+      }
     }
 
     return () => {
       if (scanner) {
-        scanner.stop()
-        scanner.destroy()
+        scanner.clear()
         scannerRef.current = null
       }
     }
@@ -107,41 +105,41 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
   // 验证是否为有效的条形码（支持多种格式）
   const isValidBarcode = (data: string): boolean => {
     // 移除可能的空格并检查
-    const cleanData = data.replace(/\s/g, '');
+    const cleanData = data.replace(/\s/g, '')
     
     // 支持多种条形码格式
     // EAN-13: 13位数字
     if (/^\d{13}$/.test(cleanData)) {
-      return true;
+      return true
     }
     
     // EAN-8: 8位数字
     if (/^\d{8}$/.test(cleanData)) {
-      return true;
+      return true
     }
     
     // UPC-A: 12位数字
     if (/^\d{12}$/.test(cleanData)) {
-      return true;
+      return true
     }
     
     // CODE-128: 可以包含字母、数字和特殊字符
     if (/^[\x00-\x7F]+$/.test(cleanData) && cleanData.length >= 4) {
-      return true;
+      return true
     }
     
-    return false;
+    // QR码内容可以是任意文本
+    if (cleanData.length > 0) {
+      return true
+    }
+    
+    return false
   }
 
   // 控制扫描状态
   const toggleScanning = async () => {
     if (isScanning) {
       // 停止扫描
-      if (scannerRef.current) {
-        scannerRef.current.stop()
-        scannerRef.current.destroy()
-        scannerRef.current = null
-      }
       setIsScanning(false)
       setScanResult(null)
       setError(null)
@@ -171,23 +169,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
       <div className="scanner-container relative bg-gray-900 rounded-lg overflow-hidden border-2 border-dashed border-gray-700">
         {/* 视频显示区域 */}
         <div className="scanner-video w-full h-96 flex items-center justify-center relative">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted
-            className="w-full h-full object-cover"
+          <div 
+            ref={scannerContainerRef}
+            id="barcode-scanner-container"
+            className="w-full h-full"
           />
-          
-          {/* 扫描区域提示 - 为条形码优化的水平矩形区域 */}
-          {isScanning && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-80 h-24 border-4 border-green-500 rounded-lg relative">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-green-500 animate-pulse"></div>
-                <div className="absolute -inset-4 border-2 border-white border-opacity-20 rounded-xl"></div>
-              </div>
-            </div>
-          )}
           
           {/* 状态覆盖层 */}
           {!isScanning && (
@@ -258,7 +244,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, onError }) => {
           提示：将条形码对准扫描框即可自动识别
         </p>
         <p className="text-center mt-1 text-xs text-gray-500">
-          支持EAN-13、EAN-8、UPC-A和CODE-128等多种条形码格式
+          支持EAN-13、EAN-8、UPC-A、UPC-E、CODE-128、CODE-39和QR码等多种格式
         </p>
       </div>
     </div>
