@@ -39,29 +39,7 @@ CREATE TABLE schedules (
 CREATE INDEX idx_schedules_user_id ON schedules(user_id);
 CREATE INDEX idx_schedules_start_time ON schedules(start_time);
 
--- 3. 健康追踪表
-CREATE TABLE health_tracks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  weight DECIMAL(5,2), -- 体重 (kg)
-  height DECIMAL(5,2), -- 身高 (cm)
-  blood_pressure_sys INTEGER, -- 收缩压
-  blood_pressure_dia INTEGER, -- 舒张压
-  heart_rate INTEGER, -- 心率
-  steps INTEGER, -- 步数
-  sleep_hours DECIMAL(4,2), -- 睡眠小时数
-  water_intake DECIMAL(5,2), -- 饮水量 (升)
-  notes TEXT, -- 备注
-  tracked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 为健康追踪表创建索引
-CREATE INDEX idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX idx_health_tracks_tracked_date ON health_tracks(tracked_date);
-
--- 4. 用户个人资料表
+-- 3. 用户个人资料表
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username VARCHAR(50) UNIQUE,
@@ -78,7 +56,6 @@ CREATE INDEX idx_user_profiles_username ON user_profiles(username);
 -- 启用行级安全策略 (RLS)
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- 创建行级安全策略
@@ -88,10 +65,6 @@ CREATE POLICY "用户只能查看自己的待办事项" ON todos
 
 -- 日程安排表策略
 CREATE POLICY "用户只能查看自己的日程安排" ON schedules
-  FOR ALL USING (auth.uid() = user_id);
-
--- 健康追踪表策略
-CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
   FOR ALL USING (auth.uid() = user_id);
 
 -- 用户个人资料表策略
@@ -124,11 +97,6 @@ CREATE TRIGGER update_schedules_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_health_tracks_updated_at 
-  BEFORE UPDATE ON health_tracks 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_user_profiles_updated_at 
   BEFORE UPDATE ON user_profiles 
   FOR EACH ROW 
@@ -149,7 +117,7 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 5. 排班表
+-- 4. 排班表
 CREATE TABLE work_schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -181,7 +149,7 @@ CREATE TRIGGER update_work_schedules_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- 6. 店铺时薪表
+-- 5. 店铺时薪表
 CREATE TABLE shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -209,7 +177,7 @@ CREATE TRIGGER update_shop_hourly_rates_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- 7. 电商表结构
+-- 6. 电商表结构
 -- 商品表
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

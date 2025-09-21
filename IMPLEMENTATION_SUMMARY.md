@@ -12,17 +12,16 @@
 我们设计并实现了以下数据库表：
 
 1. **todos** - 待办事项表
-2. **health_tracks** - 健康追踪表
-4. **user_profiles** - 用户个人资料表
-5. **work_schedules** - 工作排班表
-6. **shop_hourly_rates** - 店铺时薪表
-7. **shopping_items** - 购物清单表
-8. **products** - 商品表
-9. **shopping_carts** - 购物车表
-10. **cart_items** - 购物车项表
-11. **orders** - 订单表
-12. **order_items** - 订单项表
-13. **shops** - 超市表
+2. **user_profiles** - 用户个人资料表
+3. **work_schedules** - 工作排班表
+4. **shop_hourly_rates** - 店铺时薪表
+5. **shopping_items** - 购物清单表
+6. **products** - 商品表
+7. **shopping_carts** - 购物车表
+8. **cart_items** - 购物车项表
+9. **orders** - 订单表
+10. **order_items** - 订单项表
+11. **shops** - 超市表
 
 所有表都启用了行级安全策略(RLS)，确保用户只能访问自己的数据。
 

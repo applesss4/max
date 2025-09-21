@@ -79,56 +79,6 @@ export interface Database {
           updated_at?: string
         }
       }
-      health_tracks: {
-        Row: {
-          id: string
-          user_id: string
-          weight: number | null
-          height: number | null
-          blood_pressure_sys: number | null
-          blood_pressure_dia: number | null
-          heart_rate: number | null
-          steps: number | null
-          sleep_hours: number | null
-          water_intake: number | null
-          notes: string | null
-          tracked_date: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          weight?: number | null
-          height?: number | null
-          blood_pressure_sys?: number | null
-          blood_pressure_dia?: number | null
-          heart_rate?: number | null
-          steps?: number | null
-          sleep_hours?: number | null
-          water_intake?: number | null
-          notes?: string | null
-          tracked_date?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          weight?: number | null
-          height?: number | null
-          blood_pressure_sys?: number | null
-          blood_pressure_dia?: number | null
-          heart_rate?: number | null
-          steps?: number | null
-          sleep_hours?: number | null
-          water_intake?: number | null
-          notes?: string | null
-          tracked_date?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
       user_profiles: {
         Row: {
           id: string

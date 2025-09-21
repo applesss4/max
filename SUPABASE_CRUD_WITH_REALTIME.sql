@@ -15,25 +15,7 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.2 健康追踪表
-CREATE TABLE IF NOT EXISTS health_tracks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  weight DECIMAL(5,2), -- 体重 (kg)
-  height DECIMAL(5,2), -- 身高 (cm)
-  blood_pressure_sys INTEGER, -- 收缩压
-  blood_pressure_dia INTEGER, -- 舒张压
-  heart_rate INTEGER, -- 心率
-  steps INTEGER, -- 步数
-  sleep_hours DECIMAL(4,2), -- 睡眠小时数
-  water_intake DECIMAL(5,2), -- 饮水量 (升)
-  notes TEXT, -- 备注
-  tracked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 1.3 用户个人资料表
+-- 1.2 用户个人资料表
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username VARCHAR(50) UNIQUE,
@@ -44,7 +26,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.4 排班表
+-- 1.3 排班表
 CREATE TABLE IF NOT EXISTS work_schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -52,13 +34,14 @@ CREATE TABLE IF NOT EXISTS work_schedules (
   work_date DATE NOT NULL,
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
+  break_duration DECIMAL(3,1) DEFAULT 0.0,  -- 休息时长（小时）
   duration DECIMAL(5,2),     -- 工作时长（小时）
   hourly_rate DECIMAL(10,2), -- 时薪
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.5 店铺时薪表
+-- 1.4 店铺时薪表
 CREATE TABLE IF NOT EXISTS shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -69,7 +52,7 @@ CREATE TABLE IF NOT EXISTS shop_hourly_rates (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.6 条形码表
+-- 1.5 条形码表
 CREATE TABLE IF NOT EXISTS barcodes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -85,7 +68,7 @@ CREATE TABLE IF NOT EXISTS barcodes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.7 电商表结构
+-- 1.6 电商表结构
 -- 商品表
 CREATE TABLE IF NOT EXISTS products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -146,8 +129,6 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id);
 CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
 CREATE INDEX IF NOT EXISTS idx_todos_due_date ON todos(due_date);
-CREATE INDEX IF NOT EXISTS idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX IF NOT EXISTS idx_health_tracks_tracked_date ON health_tracks(tracked_date);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
 CREATE INDEX IF NOT EXISTS idx_work_schedules_user_id ON work_schedules(user_id);
 CREATE INDEX IF NOT EXISTS idx_work_schedules_work_date ON work_schedules(work_date);
@@ -168,7 +149,6 @@ CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id)
 
 -- 2. 启用行级安全策略 (RLS)
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
@@ -184,11 +164,7 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "用户只能查看自己的待办事项" ON todos
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.2 健康追踪表策略
-CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
-  FOR ALL USING (auth.uid() = user_id);
-
--- 3.3 用户个人资料表策略
+-- 3.2 用户个人资料表策略
 CREATE POLICY "用户可以查看所有公开资料" ON user_profiles
   FOR SELECT USING (true);
   
@@ -198,28 +174,19 @@ CREATE POLICY "用户只能更新自己的资料" ON user_profiles
 CREATE POLICY "用户只能插入自己的资料" ON user_profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- 3.4 排班表策略
+-- 3.3 排班表策略
 CREATE POLICY "用户只能查看自己的排班" ON work_schedules
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.5 店铺时薪表策略
+-- 3.4 店铺时薪表策略
 CREATE POLICY "用户只能查看自己的店铺时薪" ON shop_hourly_rates
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.6 条形码表策略
-CREATE POLICY "用户可以查看自己的条形码" ON barcodes
-  FOR SELECT USING (auth.uid() = user_id);
+-- 3.5 条形码表策略
+CREATE POLICY "用户只能查看自己的条形码" ON barcodes
+  FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "用户可以插入自己的条形码" ON barcodes
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "用户可以更新自己的条形码" ON barcodes
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "用户可以删除自己的条形码" ON barcodes
-  FOR DELETE USING (auth.uid() = user_id);
-
--- 3.7 商品表策略
+-- 3.6 商品表策略
 CREATE POLICY "用户可以查看自己店铺的商品" ON products
   FOR SELECT USING (
     shop_id IS NULL OR 
@@ -230,11 +197,44 @@ CREATE POLICY "用户可以查看自己店铺的商品" ON products
     )
   );
 
--- 3.8 购物车表策略
+-- 添加INSERT策略，允许用户向自己的店铺添加商品
+CREATE POLICY "用户可以添加自己店铺的商品" ON products
+  FOR INSERT WITH CHECK (
+    shop_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = products.shop_id 
+      AND shops.user_id = auth.uid()
+    )
+  );
+
+-- 添加UPDATE策略，允许用户更新自己店铺的商品
+CREATE POLICY "用户可以更新自己店铺的商品" ON products
+  FOR UPDATE USING (
+    shop_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = products.shop_id 
+      AND shops.user_id = auth.uid()
+    )
+  );
+
+-- 添加DELETE策略，允许用户删除自己店铺的商品
+CREATE POLICY "用户可以删除自己店铺的商品" ON products
+  FOR DELETE USING (
+    shop_id IS NOT NULL AND 
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = products.shop_id 
+      AND shops.user_id = auth.uid()
+    )
+  );
+
+-- 3.7 购物车表策略
 CREATE POLICY "用户只能查看自己的购物车" ON shopping_carts
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.9 购物车项表策略
+-- 3.8 购物车项表策略
 CREATE POLICY "用户只能查看自己购物车中的商品" ON cart_items
   FOR ALL USING (
     EXISTS (
@@ -244,11 +244,11 @@ CREATE POLICY "用户只能查看自己购物车中的商品" ON cart_items
     )
   );
 
--- 3.10 订单表策略
+-- 3.9 订单表策略
 CREATE POLICY "用户只能查看自己的订单" ON orders
   FOR ALL USING (auth.uid() = user_id);
 
--- 3.11 订单项表策略
+-- 3.10 订单项表策略
 CREATE POLICY "用户只能查看自己订单中的商品" ON order_items
   FOR ALL USING (
     EXISTS (
@@ -268,57 +268,52 @@ END;
 $$ language 'plpgsql';
 
 -- 5. 为表创建触发器
-CREATE TRIGGER IF NOT EXISTS update_todos_updated_at 
+CREATE TRIGGER update_todos_updated_at 
   BEFORE UPDATE ON todos 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_health_tracks_updated_at 
-  BEFORE UPDATE ON health_tracks 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS update_user_profiles_updated_at 
+CREATE TRIGGER update_user_profiles_updated_at 
   BEFORE UPDATE ON user_profiles 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_work_schedules_updated_at 
+CREATE TRIGGER update_work_schedules_updated_at 
   BEFORE UPDATE ON work_schedules 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_shop_hourly_rates_updated_at 
+CREATE TRIGGER update_shop_hourly_rates_updated_at 
   BEFORE UPDATE ON shop_hourly_rates 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_barcodes_updated_at 
+CREATE TRIGGER update_barcodes_updated_at 
   BEFORE UPDATE ON barcodes 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_products_updated_at 
+CREATE TRIGGER update_products_updated_at 
   BEFORE UPDATE ON products 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_shopping_carts_updated_at 
+CREATE TRIGGER update_shopping_carts_updated_at 
   BEFORE UPDATE ON shopping_carts 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_cart_items_updated_at 
+CREATE TRIGGER update_cart_items_updated_at 
   BEFORE UPDATE ON cart_items 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_orders_updated_at 
+CREATE TRIGGER update_orders_updated_at 
   BEFORE UPDATE ON orders 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER IF NOT EXISTS update_order_items_updated_at 
+CREATE TRIGGER update_order_items_updated_at 
   BEFORE UPDATE ON order_items 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
@@ -342,7 +337,6 @@ CREATE TRIGGER on_auth_user_created
 -- 8. 启用实时监控功能
 -- 为所有表启用实时订阅
 ALTER PUBLICATION supabase_realtime ADD TABLE todos;
-ALTER PUBLICATION supabase_realtime ADD TABLE health_tracks;
 ALTER PUBLICATION supabase_realtime ADD TABLE user_profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE work_schedules;
 ALTER PUBLICATION supabase_realtime ADD TABLE shop_hourly_rates;
@@ -363,69 +357,23 @@ VALUES ('用户ID', '完成项目报告', '编写并提交季度项目报告', 2
 INSERT INTO health_tracks (user_id, weight, height, steps, tracked_date)
 VALUES ('用户ID', 70.5, 175.0, 8000, '2025-09-20');
 
--- 创建排班
-INSERT INTO work_schedules (user_id, shop_name, work_date, start_time, end_time)
-VALUES ('用户ID', '便利店', '2025-09-20', '08:00:00', '16:00:00');
-
--- 创建店铺时薪设置
-INSERT INTO shop_hourly_rates (user_id, shop_name, day_shift_rate, night_shift_rate)
-VALUES ('用户ID', '便利店', 15.00, 20.00);
-
--- 创建条形码记录
-INSERT INTO barcodes (user_id, barcode_value, barcode_type, product_name, product_price)
-VALUES ('用户ID', '1234567890123', 'EAN-13', '示例产品', 29.99);
-
--- 9.2 查询操作 (Read)
--- 查询用户的所有待办事项
+-- 9.2 读取操作 (Read)
+-- 获取用户的所有待办事项
 SELECT * FROM todos WHERE user_id = '用户ID' ORDER BY created_at DESC;
 
--- 查询用户的健康数据
-SELECT * FROM health_tracks 
-WHERE user_id = '用户ID' 
-AND tracked_date >= CURRENT_DATE - INTERVAL '7 days'
-ORDER BY tracked_date DESC;
-
--- 查询用户的排班信息
-SELECT * FROM work_schedules 
-WHERE user_id = '用户ID' 
-AND work_date >= CURRENT_DATE 
-ORDER BY work_date;
-
--- 查询用户的店铺时薪设置
-SELECT * FROM shop_hourly_rates 
-WHERE user_id = '用户ID' 
-ORDER BY shop_name;
-
--- 查询用户的条形码记录
-SELECT * FROM barcodes 
-WHERE user_id = '用户ID' 
-ORDER BY scanned_at DESC;
+-- 获取用户最近的健康记录
+SELECT * FROM health_tracks WHERE user_id = '用户ID' ORDER BY tracked_date DESC LIMIT 10;
 
 -- 9.3 更新操作 (Update)
 -- 更新待办事项状态
 UPDATE todos 
-SET completed = true, updated_at = NOW()
+SET completed = true, updated_at = NOW() 
 WHERE id = '待办事项ID' AND user_id = '用户ID';
 
 -- 更新健康记录
 UPDATE health_tracks 
-SET weight = 69.8, steps = 10000
+SET weight = 69.8, updated_at = NOW() 
 WHERE id = '健康记录ID' AND user_id = '用户ID';
-
--- 更新排班信息
-UPDATE work_schedules 
-SET end_time = '17:00:00', hourly_rate = 16.50
-WHERE id = '排班ID' AND user_id = '用户ID';
-
--- 更新店铺时薪
-UPDATE shop_hourly_rates 
-SET day_shift_rate = 16.00, night_shift_rate = 22.00
-WHERE id = '时薪设置ID' AND user_id = '用户ID';
-
--- 更新条形码信息
-UPDATE barcodes 
-SET product_name = '更新的产品名称', product_price = 39.99
-WHERE id = '条形码ID' AND user_id = '用户ID';
 
 -- 9.4 删除操作 (Delete)
 -- 删除待办事项
@@ -434,61 +382,58 @@ DELETE FROM todos WHERE id = '待办事项ID' AND user_id = '用户ID';
 -- 删除健康记录
 DELETE FROM health_tracks WHERE id = '健康记录ID' AND user_id = '用户ID';
 
--- 删除排班信息
-DELETE FROM work_schedules WHERE id = '排班ID' AND user_id = '用户ID';
-
--- 删除店铺时薪设置
-DELETE FROM shop_hourly_rates WHERE id = '时薪设置ID' AND user_id = '用户ID';
-
--- 删除条形码记录
-DELETE FROM barcodes WHERE id = '条形码ID' AND user_id = '用户ID';
-
--- 10. 实时监控查询示例
--- 订阅待办事项的实时更新
--- 在应用代码中使用:
--- const realtimeTodos = supabase
+-- 10. 实时监控示例
+-- 在应用中监听待办事项表的实时变化
+-- const todosSubscription = supabase
 --   .from('todos')
 --   .on('*', payload => {
---     console.log('待办事项变更:', payload)
+--     console.log('待办事项变化:', payload);
 --   })
---   .subscribe()
+--   .subscribe();
 
--- 订阅条形码记录的实时更新
--- const realtimeBarcodes = supabase
---   .from('barcodes')
---   .on('*', payload => {
---     console.log('条形码记录变更:', payload)
---   })
---   .subscribe()
+-- 11. 数据验证和约束
+-- 为排班表添加时间约束
+ALTER TABLE work_schedules 
+ADD CONSTRAINT check_work_schedule_time 
+CHECK (end_time > start_time);
 
--- 11. 聚合查询示例
--- 统计用户待办事项完成情况
-SELECT 
-  COUNT(*) as total_todos,
-  COUNT(CASE WHEN completed = true THEN 1 END) as completed_todos,
-  COUNT(CASE WHEN completed = false THEN 1 END) as pending_todos
-FROM todos 
-WHERE user_id = '用户ID';
+-- 为店铺时薪表添加非负约束
+ALTER TABLE shop_hourly_rates 
+ADD CONSTRAINT check_day_shift_rate_positive 
+CHECK (day_shift_rate >= 0);
 
--- 统计用户本周健康数据平均值
-SELECT 
-  AVG(weight) as avg_weight,
-  AVG(steps) as avg_steps,
-  AVG(sleep_hours) as avg_sleep_hours
-FROM health_tracks 
-WHERE user_id = '用户ID' 
-AND tracked_date >= CURRENT_DATE - INTERVAL '7 days';
+ALTER TABLE shop_hourly_rates 
+ADD CONSTRAINT check_night_shift_rate_positive 
+CHECK (night_shift_rate >= 0);
 
--- 统计用户月度工作时长和收入
-SELECT 
-  SUM(duration) as total_hours,
-  SUM(duration * hourly_rate) as total_earnings
-FROM work_schedules 
-WHERE user_id = '用户ID' 
-AND work_date >= DATE_TRUNC('month', CURRENT_DATE)
-AND work_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month';
+-- 12. 性能优化建议
+-- 创建复合索引以提高查询性能
+CREATE INDEX IF NOT EXISTS idx_todos_user_completed ON todos(user_id, completed);
+CREATE INDEX IF NOT EXISTS idx_work_schedules_user_date ON work_schedules(user_id, work_date);
 
--- 统计用户条形码记录数量
-SELECT COUNT(*) as total_barcodes
-FROM barcodes 
-WHERE user_id = '用户ID';
+-- 13. 数据清理和维护
+-- 定期清理过期数据的示例函数
+CREATE OR REPLACE FUNCTION cleanup_old_data()
+RETURNS void AS $$
+BEGIN
+  -- 删除30天前的已完成待办事项
+  DELETE FROM todos 
+  WHERE completed = true 
+  AND updated_at < NOW() - INTERVAL '30 days';
+  
+  -- 删除90天前的健康记录（可选）
+  -- DELETE FROM health_tracks 
+  -- WHERE updated_at < NOW() - INTERVAL '90 days';
+END;
+$$ LANGUAGE plpgsql;
+
+-- 14. 备份和恢复
+-- 导出数据的示例命令（在终端中运行）
+-- pg_dump -h your-host -U your-user -d your-database -t todos > todos_backup.sql
+
+-- 15. 故障排除
+-- 检查RLS策略是否正确应用
+-- SELECT * FROM pg_policy WHERE polname LIKE '%用户%';
+
+-- 查看表的RLS状态
+-- SELECT tablename, relrowsecurity FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = 'public';

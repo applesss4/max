@@ -10,9 +10,6 @@
 -- 为待办事项表启用实时监控
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS todos;
 
--- 为健康追踪表启用实时监控
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS health_tracks;
-
 -- 为用户个人资料表启用实时监控
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS user_profiles;
 

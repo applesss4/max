@@ -19,29 +19,7 @@ CREATE INDEX idx_todos_user_id ON todos(user_id);
 CREATE INDEX idx_todos_completed ON todos(completed);
 CREATE INDEX idx_todos_due_date ON todos(due_date);
 
--- 3. 健康追踪表
-CREATE TABLE health_tracks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  weight DECIMAL(5,2), -- 体重 (kg)
-  height DECIMAL(5,2), -- 身高 (cm)
-  blood_pressure_sys INTEGER, -- 收缩压
-  blood_pressure_dia INTEGER, -- 舒张压
-  heart_rate INTEGER, -- 心率
-  steps INTEGER, -- 步数
-  sleep_hours DECIMAL(4,2), -- 睡眠小时数
-  water_intake DECIMAL(5,2), -- 饮水量 (升)
-  notes TEXT, -- 备注
-  tracked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 为健康追踪表创建索引
-CREATE INDEX idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX idx_health_tracks_tracked_date ON health_tracks(tracked_date);
-
--- 4. 用户个人资料表
+-- 2. 用户个人资料表
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username VARCHAR(50) UNIQUE,
@@ -55,7 +33,7 @@ CREATE TABLE user_profiles (
 -- 为用户个人资料表创建索引
 CREATE INDEX idx_user_profiles_username ON user_profiles(username);
 
--- 5. 排班表
+-- 3. 排班表
 CREATE TABLE work_schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -74,7 +52,7 @@ CREATE TABLE work_schedules (
 CREATE INDEX idx_work_schedules_user_id ON work_schedules(user_id);
 CREATE INDEX idx_work_schedules_work_date ON work_schedules(work_date);
 
--- 6. 店铺时薪表
+-- 4. 店铺时薪表
 CREATE TABLE shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -89,7 +67,7 @@ CREATE TABLE shop_hourly_rates (
 CREATE INDEX idx_shop_hourly_rates_user_id ON shop_hourly_rates(user_id);
 CREATE INDEX idx_shop_hourly_rates_shop_name ON shop_hourly_rates(shop_name);
 
--- 7. 购物清单表
+-- 5. 购物清单表
 CREATE TABLE shopping_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -106,7 +84,7 @@ CREATE TABLE shopping_items (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 8. 电商表结构
+-- 6. 电商表结构
 -- 商品表
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -182,7 +160,6 @@ CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 
 -- 启用行级安全策略 (RLS)
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
@@ -196,10 +173,6 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 -- 创建行级安全策略
 -- 待办事项表策略
 CREATE POLICY "用户只能查看自己的待办事项" ON todos
-  FOR ALL USING (auth.uid() = user_id);
-
--- 健康追踪表策略
-CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
   FOR ALL USING (auth.uid() = user_id);
 
 -- 用户个人资料表策略
@@ -308,11 +281,6 @@ $$ language 'plpgsql';
 -- 为表创建触发器
 CREATE TRIGGER update_todos_updated_at 
   BEFORE UPDATE ON todos 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_health_tracks_updated_at 
-  BEFORE UPDATE ON health_tracks 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 

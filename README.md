@@ -5,7 +5,6 @@
 ## 功能特性
 
 - 待办事项管理
-- 健康追踪
 - 工作排班管理
 - 工资计算
 - 居家购物清单管理
@@ -41,7 +40,6 @@
 
 主要数据表包括：
 - `todos` - 待办事项
-- `health_tracks` - 健康追踪
 - `user_profiles` - 用户个人资料
 - `work_schedules` - 工作排班
 - `shop_hourly_rates` - 店铺时薪

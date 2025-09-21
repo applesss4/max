@@ -18,10 +18,9 @@
 数据库结构已定义在[ SUPABASE_SCHEMA.sql](SUPABASE_SCHEMA.sql)文件中，包含以下表：
 
 1. **todos** - 待办事项表
-2. **health_tracks** - 健康追踪表
-4. **user_profiles** - 用户个人资料表
-5. **work_schedules** - 工作排班表
-6. **shop_hourly_rates** - 店铺时薪表
+2. **user_profiles** - 用户个人资料表
+3. **work_schedules** - 工作排班表
+4. **shop_hourly_rates** - 店铺时薪表
 
 所有表都启用了行级安全策略(RLS)，确保用户只能访问自己的数据。
 

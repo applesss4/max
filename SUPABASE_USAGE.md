@@ -18,26 +18,7 @@
 - `created_at` (TIMESTAMP): 创建时间
 - `updated_at` (TIMESTAMP): 更新时间
 
-### 2. 健康追踪表 (health_tracks)
-存储用户的健康数据。
-
-字段：
-- `id` (UUID): 主键
-- `user_id` (UUID): 外键，关联到用户
-- `weight` (DECIMAL): 体重 (kg)
-- `height` (DECIMAL): 身高 (cm)
-- `blood_pressure_sys` (INTEGER): 收缩压
-- `blood_pressure_dia` (INTEGER): 舒张压
-- `heart_rate` (INTEGER): 心率
-- `steps` (INTEGER): 步数
-- `sleep_hours` (DECIMAL): 睡眠小时数
-- `water_intake` (DECIMAL): 饮水量 (升)
-- `notes` (TEXT): 备注
-- `tracked_date` (DATE): 记录日期
-- `created_at` (TIMESTAMP): 创建时间
-- `updated_at` (TIMESTAMP): 更新时间
-
-### 3. 用户个人资料表 (user_profiles)
+### 2. 用户个人资料表 (user_profiles)
 存储用户的个人资料信息。
 
 字段：
@@ -49,7 +30,7 @@
 - `bio` (TEXT): 个人简介
 - `updated_at` (TIMESTAMP): 更新时间
 
-### 4. 工作排班表 (work_schedules)
+### 3. 工作排班表 (work_schedules)
 存储用户的工作排班信息。
 
 字段：
@@ -65,7 +46,7 @@
 - `created_at` (TIMESTAMP): 创建时间
 - `updated_at` (TIMESTAMP): 更新时间
 
-### 5. 店铺时薪表 (shop_hourly_rates)
+### 4. 店铺时薪表 (shop_hourly_rates)
 存储不同店铺的时薪设置。
 
 字段：

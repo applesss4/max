@@ -37,10 +37,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 ### 4.2 验证表创建
 
-执行成功后，您应该能在 "Table Editor" 中看到以下6个表：
+执行成功后，您应该能在 "Table Editor" 中看到以下表：
 - todos
-- schedules
-- health_tracks
 - user_profiles
 - work_schedules
 - shop_hourly_rates

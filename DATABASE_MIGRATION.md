@@ -8,7 +8,7 @@
 
 ### 迁移 001: 初始化数据库结构
 - 文件: `supabase/migrations/001_init_schema.sql`
-- 描述: 创建基础表结构，包括待办事项、健康追踪、用户个人资料等表
+- 描述: 创建基础表结构，包括待办事项、用户个人资料等表
 
 ### 迁移 002: 更新店铺时薪表
 - 文件: `supabase/migrations/002_update_shop_hourly_rates.sql`

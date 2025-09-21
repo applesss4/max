@@ -23,27 +23,7 @@ CREATE TABLE todos (
 );
 ```
 
-### 2. health_tracks (健康追踪表)
-```sql
-CREATE TABLE health_tracks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  weight DECIMAL(5,2),
-  height DECIMAL(5,2),
-  blood_pressure_sys INTEGER,
-  blood_pressure_dia INTEGER,
-  heart_rate INTEGER,
-  steps INTEGER,
-  sleep_hours DECIMAL(4,2),
-  water_intake DECIMAL(5,2),
-  notes TEXT,
-  tracked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-
-### 3. user_profiles (用户个人资料表)
+### 2. user_profiles (用户个人资料表)
 ```sql
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -56,7 +36,7 @@ CREATE TABLE user_profiles (
 );
 ```
 
-### 4. work_schedules (排班表)
+### 3. work_schedules (排班表)
 ```sql
 CREATE TABLE work_schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -73,7 +53,7 @@ CREATE TABLE work_schedules (
 );
 ```
 
-### 5. shop_hourly_rates (店铺时薪表)
+### 4. shop_hourly_rates (店铺时薪表)
 ```sql
 CREATE TABLE shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -96,10 +76,6 @@ CREATE INDEX idx_todos_user_id ON todos(user_id);
 CREATE INDEX idx_todos_completed ON todos(completed);
 CREATE INDEX idx_todos_due_date ON todos(due_date);
 
--- 健康追踪表索引
-CREATE INDEX idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX idx_health_tracks_tracked_date ON health_tracks(tracked_date);
-
 -- 用户个人资料表索引
 CREATE INDEX idx_user_profiles_username ON user_profiles(username);
 
@@ -119,7 +95,6 @@ CREATE INDEX idx_shop_hourly_rates_shop_name ON shop_hourly_rates(shop_name);
 ```sql
 -- 启用RLS
 ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
@@ -127,10 +102,6 @@ ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
 -- 创建策略
 -- 待办事项表策略
 CREATE POLICY "用户只能查看自己的待办事项" ON todos
-  FOR ALL USING (auth.uid() = user_id);
-
--- 健康追踪表策略
-CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
   FOR ALL USING (auth.uid() = user_id);
 
 -- 用户个人资料表策略
@@ -172,11 +143,6 @@ CREATE TRIGGER update_todos_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_health_tracks_updated_at 
-  BEFORE UPDATE ON health_tracks 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_user_profiles_updated_at 
   BEFORE UPDATE ON user_profiles 
   FOR EACH ROW 
@@ -208,220 +174,126 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 ```
 
-## 实时监控配置
-
-为启用Supabase的实时监控功能，需要将表添加到实时发布中：
-
-```sql
--- 启用实时监控功能
-ALTER PUBLICATION supabase_realtime ADD TABLE todos;
-ALTER PUBLICATION supabase_realtime ADD TABLE health_tracks;
-ALTER PUBLICATION supabase_realtime ADD TABLE user_profiles;
-ALTER PUBLICATION supabase_realtime ADD TABLE work_schedules;
-ALTER PUBLICATION supabase_realtime ADD TABLE shop_hourly_rates;
-```
-
 ## CRUD操作示例
 
-### 创建操作 (Create)
+### 1. 待办事项操作
+
 ```sql
 -- 创建待办事项
 INSERT INTO todos (user_id, title, description, priority, due_date)
 VALUES ('用户ID', '完成项目报告', '编写并提交季度项目报告', 2, '2025-09-30');
 
--- 创建健康记录
-INSERT INTO health_tracks (user_id, weight, height, steps, tracked_date)
-VALUES ('用户ID', 70.5, 175.0, 8000, '2025-09-20');
-
--- 创建排班
-INSERT INTO work_schedules (user_id, shop_name, work_date, start_time, end_time, break_duration)
-VALUES ('用户ID', '便利店', '2025-09-20', '08:00:00', '16:00:00', 0.5);
-
--- 创建店铺时薪设置
-INSERT INTO shop_hourly_rates (user_id, shop_name, day_shift_rate, night_shift_rate)
-VALUES ('用户ID', '便利店', 15.00, 20.00);
-```
-
-### 查询操作 (Read)
-```sql
--- 查询用户的所有待办事项
+-- 查询待办事项
 SELECT * FROM todos WHERE user_id = '用户ID' ORDER BY created_at DESC;
 
--- 查询用户的健康数据
-SELECT * FROM health_tracks 
-WHERE user_id = '用户ID' 
-AND tracked_date >= CURRENT_DATE - INTERVAL '7 days'
-ORDER BY tracked_date DESC;
-
--- 查询用户的排班信息
-SELECT * FROM work_schedules 
-WHERE user_id = '用户ID' 
-AND work_date >= CURRENT_DATE 
-ORDER BY work_date;
-
--- 查询用户的店铺时薪设置
-SELECT * FROM shop_hourly_rates 
-WHERE user_id = '用户ID' 
-ORDER BY shop_name;
-```
-
-### 更新操作 (Update)
-```sql
--- 更新待办事项状态
+-- 更新待办事项
 UPDATE todos 
-SET completed = true, updated_at = NOW()
+SET title = '更新后的标题', completed = true 
 WHERE id = '待办事项ID' AND user_id = '用户ID';
 
--- 更新健康记录
-UPDATE health_tracks 
-SET weight = 69.8, steps = 10000
-WHERE id = '健康记录ID' AND user_id = '用户ID';
+-- 删除待办事项
+DELETE FROM todos WHERE id = '待办事项ID' AND user_id = '用户ID';
+```
 
--- 更新排班信息
+### 2. 排班操作
+
+```sql
+-- 创建排班
+INSERT INTO work_schedules (user_id, shop_name, work_date, start_time, end_time, break_duration, duration, hourly_rate)
+VALUES ('用户ID', '超市A', '2025-09-20', '09:00:00', '17:00:00', 1.0, 7.0, 25.0);
+
+-- 查询排班
+SELECT * FROM work_schedules WHERE user_id = '用户ID' AND work_date >= '2025-09-01' ORDER BY work_date;
+
+-- 更新排班
 UPDATE work_schedules 
-SET end_time = '17:00:00', break_duration = 1.0
+SET hourly_rate = 28.0 
 WHERE id = '排班ID' AND user_id = '用户ID';
+
+-- 删除排班
+DELETE FROM work_schedules WHERE id = '排班ID' AND user_id = '用户ID';
+```
+
+### 3. 店铺时薪操作
+
+```sql
+-- 创建店铺时薪设置
+INSERT INTO shop_hourly_rates (user_id, shop_name, day_shift_rate, night_shift_rate)
+VALUES ('用户ID', '超市A', 25.00, 30.00);
+
+-- 查询店铺时薪
+SELECT * FROM shop_hourly_rates WHERE user_id = '用户ID';
 
 -- 更新店铺时薪
 UPDATE shop_hourly_rates 
-SET day_shift_rate = 16.00, night_shift_rate = 22.00
-WHERE id = '时薪设置ID' AND user_id = '用户ID';
+SET day_shift_rate = 28.00, night_shift_rate = 33.00
+WHERE id = '时薪ID' AND user_id = '用户ID';
+
+-- 删除店铺时薪
+DELETE FROM shop_hourly_rates WHERE id = '时薪ID' AND user_id = '用户ID';
 ```
 
-### 删除操作 (Delete)
+## 实时监控配置
+
+为启用实时监控功能，需要将表添加到supabase_realtime发布中：
+
 ```sql
--- 删除待办事项
-DELETE FROM todos WHERE id = '待办事项ID' AND user_id = '用户ID';
-
--- 删除健康记录
-DELETE FROM health_tracks WHERE id = '健康记录ID' AND user_id = '用户ID';
-
--- 删除排班信息
-DELETE FROM work_schedules WHERE id = '排班ID' AND user_id = '用户ID';
-
--- 删除店铺时薪设置
-DELETE FROM shop_hourly_rates WHERE id = '时薪设置ID' AND user_id = '用户ID';
+-- 启用实时监控功能
+ALTER PUBLICATION supabase_realtime ADD TABLE todos;
+ALTER PUBLICATION supabase_realtime ADD TABLE user_profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE work_schedules;
+ALTER PUBLICATION supabase_realtime ADD TABLE shop_hourly_rates;
 ```
 
-## 实时监控使用说明
+## 数据迁移脚本
 
-在前端应用中使用Supabase JavaScript客户端订阅表变更:
+如果需要从旧的LocalStorage数据迁移到新的数据库结构，可以使用以下脚本：
 
 ```javascript
-// 订阅待办事项的实时更新
-const realtimeTodos = supabase
-  .from('todos')
-  .on('*', payload => {
-    console.log('待办事项变更:', payload)
-  })
-  .subscribe()
-
-// 订阅排班信息的实时更新
-const realtimeSchedules = supabase
-  .from('work_schedules')
-  .on('*', payload => {
-    console.log('排班信息变更:', payload)
-  })
-  .subscribe()
-
-// 可以监听特定事件类型:
-// - INSERT: .on('INSERT', handler)
-// - UPDATE: .on('UPDATE', handler)
-// - DELETE: .on('DELETE', handler)
-// - ALL: .on('*', handler)
-
-// 实时监控支持过滤条件:
-const subscription = supabase
-  .from('todos')
-  .eq('user_id', userId)
-  .on('*', payload => {
-    console.log('我的待办事项变更:', payload)
-  })
-  .subscribe()
-
-// 记得在组件卸载时取消订阅以避免内存泄漏:
-supabase.removeSubscription(subscription)
+// 示例：迁移排班数据
+async function migrateWorkSchedules() {
+  // 从LocalStorage获取旧数据
+  const oldSchedules = JSON.parse(localStorage.getItem('workSchedules') || '[]');
+  
+  // 迁移到数据库
+  for (const schedule of oldSchedules) {
+    await supabase
+      .from('work_schedules')
+      .insert({
+        user_id: schedule.userId,
+        shop_name: schedule.shopName,
+        work_date: schedule.workDate,
+        start_time: schedule.startTime,
+        end_time: schedule.endTime,
+        break_duration: schedule.breakDuration || 0,
+        duration: schedule.duration,
+        hourly_rate: schedule.hourlyRate
+      });
+  }
+  
+  // 清理LocalStorage
+  localStorage.removeItem('workSchedules');
+}
 ```
 
-## 聚合查询示例
+## 验证和测试
 
-```sql
--- 统计用户待办事项完成情况
-SELECT 
-  COUNT(*) as total_todos,
-  COUNT(CASE WHEN completed = true THEN 1 END) as completed_todos,
-  COUNT(CASE WHEN completed = false THEN 1 END) as pending_todos
-FROM todos 
-WHERE user_id = '用户ID';
+完成迁移后，应该进行以下验证：
 
--- 统计用户本周健康数据平均值
-SELECT 
-  AVG(weight) as avg_weight,
-  AVG(steps) as avg_steps,
-  AVG(sleep_hours) as avg_sleep_hours
-FROM health_tracks 
-WHERE user_id = '用户ID' 
-AND tracked_date >= CURRENT_DATE - INTERVAL '7 days';
+1. 确认所有表结构正确创建
+2. 验证索引已创建
+3. 检查RLS策略是否生效
+4. 测试CRUD操作
+5. 验证触发器功能
+6. 测试实时监控功能
 
--- 统计用户月度工作时长和收入
-SELECT 
-  SUM(duration) as total_hours,
-  SUM(duration * hourly_rate) as total_earnings
-FROM work_schedules 
-WHERE user_id = '用户ID' 
-AND work_date >= DATE_TRUNC('month', CURRENT_DATE)
-AND work_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month';
-```
+## 故障排除
 
-## 迁移的服务层
+如果遇到问题，请检查：
 
-### 旧实现 (LocalStorage)
-- 文件: `src/services/localStorageService.ts`
-- 功能: 使用浏览器LocalStorage存储数据
-
-### 新实现 (Supabase)
-- 文件: `src/services/workScheduleService.ts`
-- 功能: 使用Supabase数据库存储数据
-- 接口保持一致，便于前端无缝切换
-
-## API变更
-
-所有API接口保持不变，仅实现方式从LocalStorage切换到Supabase:
-
-1. `getUserWorkSchedules(userId)` - 获取用户排班数据
-2. `createWorkSchedule(schedule)` - 创建排班
-3. `updateWorkSchedule(id, updates)` - 更新排班
-4. `deleteWorkSchedule(id)` - 删除排班
-5. `getShopHourlyRates(userId)` - 获取店铺时薪数据
-6. `createShopHourlyRate(rate)` - 创建店铺时薪设置
-7. `updateShopHourlyRate(id, updates)` - 更新店铺时薪设置
-8. `deleteShopHourlyRate(id)` - 删除店铺时薪设置
-
-## 数据访问权限
-
-通过Supabase的行级安全策略(RLS)确保数据安全：
-- 用户只能访问自己的数据
-- 所有操作都经过身份验证检查
-
-## 本地开发和线上部署
-
-### 本地开发
-使用Supabase CLI启动本地开发环境：
-```bash
-supabase start
-```
-
-### 线上部署
-连接到Supabase线上项目：
-1. 更新 `.env.local` 中的凭证
-2. 运行数据库迁移
-3. 部署应用
-
-## 测试
-
-确保所有功能在新数据库实现下正常工作：
-1. 排班创建、读取、更新、删除
-2. 店铺时薪设置管理
-3. 数据权限控制
-4. 跨设备数据同步
-5. 实时监控功能
+1. 表结构是否正确
+2. 索引是否创建
+3. RLS策略是否正确配置
+4. 触发器是否正常工作
+5. 数据库连接是否正常
+6. 用户权限是否正确设置

@@ -49,49 +49,10 @@ CREATE TRIGGER update_todos_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3.2 创建健康追踪表 (health_tracks)
+### 3.2 创建用户个人资料表 (user_profiles)
 
 ```sql
--- 3. 健康追踪表
-CREATE TABLE health_tracks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  weight DECIMAL(5,2),
-  height DECIMAL(5,2),
-  blood_pressure_sys INTEGER,
-  blood_pressure_dia INTEGER,
-  heart_rate INTEGER,
-  steps INTEGER,
-  sleep_hours DECIMAL(4,2),
-  water_intake DECIMAL(5,2),
-  notes TEXT,
-  tracked_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 为健康追踪表创建索引
-CREATE INDEX idx_health_tracks_user_id ON health_tracks(user_id);
-CREATE INDEX idx_health_tracks_tracked_date ON health_tracks(tracked_date);
-
--- 启用行级安全策略
-ALTER TABLE health_tracks ENABLE ROW LEVEL SECURITY;
-
--- 创建行级安全策略
-CREATE POLICY "用户只能查看自己的健康数据" ON health_tracks
-  FOR ALL USING (auth.uid() = user_id);
-
--- 创建触发器
-CREATE TRIGGER update_health_tracks_updated_at 
-  BEFORE UPDATE ON health_tracks 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-```
-
-### 3.3 创建用户个人资料表 (user_profiles)
-
-```sql
--- 4. 用户个人资料表
+-- 2. 用户个人资料表
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username VARCHAR(50) UNIQUE,
@@ -125,10 +86,10 @@ CREATE TRIGGER update_user_profiles_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3.4 创建工作排班表 (work_schedules)
+### 3.3 创建工作排班表 (work_schedules)
 
 ```sql
--- 5. 排班表
+-- 3. 排班表
 CREATE TABLE work_schedules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -136,6 +97,7 @@ CREATE TABLE work_schedules (
   work_date DATE NOT NULL,
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
+  break_duration DECIMAL(3,1) DEFAULT 0.0,  -- 休息时长（小时）
   duration DECIMAL(5,2),
   hourly_rate DECIMAL(10,2),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -160,15 +122,16 @@ CREATE TRIGGER update_work_schedules_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3.5 创建店铺时薪表 (shop_hourly_rates)
+### 3.4 创建店铺时薪表 (shop_hourly_rates)
 
 ```sql
--- 6. 店铺时薪表
+-- 4. 店铺时薪表
 CREATE TABLE shop_hourly_rates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   shop_name VARCHAR(255) NOT NULL,
-  hourly_rate DECIMAL(10,2) NOT NULL,
+  day_shift_rate DECIMAL(10,2) DEFAULT 0.00,  -- 白班时薪（8:00-22:00）
+  night_shift_rate DECIMAL(10,2) DEFAULT 0.00,  -- 夜班时薪（22:00-8:00）
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -191,7 +154,7 @@ CREATE TRIGGER update_shop_hourly_rates_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### 3.6 创建必要的函数和触发器
+### 3.5 创建必要的函数和触发器
 
 ```sql
 -- 创建自动更新updated_at字段的函数
@@ -223,43 +186,17 @@ CREATE TRIGGER on_auth_user_created
 
 1. 将上述SQL代码复制到SQL编辑器中
 2. 点击 "RUN" 按钮执行
-3. 确保每部分都成功执行，没有错误
+3. 确认所有表和策略都已正确创建
 
-## 5. 验证表创建
+## 5. 验证设置
 
-1. 返回 "Table Editor"
-2. 确认所有6个表都已创建：
-   - todos
-   - schedules
-   - health_tracks
-   - user_profiles
-   - work_schedules
-   - shop_hourly_rates
+1. 返回 "Table Editor" 查看创建的表
+2. 检查每个表的结构和索引
+3. 验证RLS策略是否已应用
+4. 测试数据插入和查询功能
 
-## 6. 验证策略设置
+## 6. 后续步骤
 
-1. 点击每个表
-2. 选择 "Policies" 标签
-3. 确认每个表都有相应的RLS策略
-
-## 7. 测试数据插入
-
-您可以使用以下SQL语句测试数据插入：
-
-```sql
--- 插入测试待办事项
-INSERT INTO todos (user_id, title, description, completed, priority, due_date)
-VALUES ('some-user-id', '测试待办事项', '这是一个测试待办事项', false, 1, '2025-12-31');
-
--- 查询测试
-SELECT * FROM todos WHERE user_id = 'some-user-id';
-```
-
-## 8. 故障排除
-
-如果遇到问题：
-
-1. 检查是否有语法错误
-2. 确认所有依赖表已创建
-3. 验证用户权限
-4. 检查Supabase项目设置
+1. 配置应用连接到Supabase数据库
+2. 更新前端代码以使用新的数据库结构
+3. 测试所有功能确保正常工作

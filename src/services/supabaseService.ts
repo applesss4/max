@@ -27,24 +27,6 @@ export interface Schedule {
   updated_at: string
 }
 
-// 健康追踪类型
-export interface HealthTrack {
-  id: string
-  user_id: string
-  weight: number
-  height: number
-  blood_pressure_sys: number
-  blood_pressure_dia: number
-  heart_rate: number
-  steps: number
-  sleep_hours: number
-  water_intake: number
-  notes: string
-  tracked_date: string
-  created_at: string
-  updated_at: string
-}
-
 // 用户个人资料类型
 export interface UserProfile {
   id: string
@@ -171,66 +153,6 @@ export const updateSchedule = async (id: string, updates: Partial<Schedule>): Pr
 export const deleteSchedule = async (id: string): Promise<{ data: null, error: any }> => {
   const { data, error } = await supabase
     .from('schedules')
-    .delete()
-    .eq('id', id)
-  
-  return { data, error }
-}
-
-// 获取用户健康数据（优化查询）
-export const getUserHealthTracks = async (userId: string): Promise<{ data: HealthTrack[] | null, error: any }> => {
-  const { data, error } = await supabase
-    .from('health_tracks')
-    .select(`
-      id,
-      user_id,
-      weight,
-      height,
-      blood_pressure_sys,
-      blood_pressure_dia,
-      heart_rate,
-      steps,
-      sleep_hours,
-      water_intake,
-      notes,
-      tracked_date,
-      created_at,
-      updated_at
-    `)
-    .eq('user_id', userId)
-    .order('tracked_date', { ascending: false })
-    .limit(100) // 限制返回数量以提高性能
-  
-  return { data, error }
-}
-
-// 创建健康记录
-export const createHealthTrack = async (healthTrack: Omit<HealthTrack, 'id' | 'created_at' | 'updated_at'>): Promise<{ data: HealthTrack | null, error: any }> => {
-  const { data, error } = await supabase
-    .from('health_tracks')
-    .insert([healthTrack])
-    .select()
-    .single()
-  
-  return { data, error }
-}
-
-// 更新健康记录
-export const updateHealthTrack = async (id: string, updates: Partial<HealthTrack>): Promise<{ data: HealthTrack | null, error: any }> => {
-  const { data, error } = await supabase
-    .from('health_tracks')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-  
-  return { data, error }
-}
-
-// 删除健康记录
-export const deleteHealthTrack = async (id: string): Promise<{ data: null, error: any }> => {
-  const { data, error } = await supabase
-    .from('health_tracks')
     .delete()
     .eq('id', id)
   
