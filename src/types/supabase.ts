@@ -225,6 +225,38 @@ export interface Database {
           updated_at?: string
         }
       }
+      news: {
+        Row: {
+          id: string
+          title: string
+          link: string
+          pub_date: string
+          summary: string | null
+          source: string
+          category: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          link: string
+          pub_date: string
+          summary?: string | null
+          source: string
+          category?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          link?: string
+          pub_date?: string
+          summary?: string | null
+          source?: string
+          category?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

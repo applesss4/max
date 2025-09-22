@@ -18,10 +18,12 @@
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
     "next": "15.5.3",
+    "node-fetch": "^3.3.2",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-calendar": "^6.0.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -34,5 +36,19 @@
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "一个使用Next.js和Supabase构建的个人生活管理应用。",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/applesss4/max.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/applesss4/max/issues"
+  },
+  "homepage": "https://github.com/applesss4/max#readme"
 }

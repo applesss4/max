@@ -42,29 +42,43 @@ export default function DashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   
   // 优化功能卡片列表 - 提前定义，确保Hook顺序一致
-  const featureCards = useMemo(() => [
-    {
-      title: '排班表',
-      description: '管理您的工作排班和工资计算',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      onClick: () => router.push('/work-schedule')
-    },
-    {
-      title: '居家购物',
-      description: '管理您的购物清单和预算',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      onClick: () => router.push('/shopping')
-    }
-    // 已移除健康追踪功能卡片
-  ], [router])
+  const featureCards = useMemo(() => {
+    const cards = [
+      {
+        title: '排班表',
+        description: '管理您的工作排班和工资计算',
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        ),
+        onClick: () => router.push('/work-schedule')
+      },
+      {
+        title: '居家购物',
+        description: '管理您的购物清单和预算',
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        ),
+        onClick: () => router.push('/shopping')
+      },
+      {
+        title: '日本新闻',
+        description: '查看最新的日本新闻',
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+          </svg>
+        ),
+        onClick: () => router.push('/news')
+      }
+    ];
+    
+    // 确保日本新闻卡片始终显示，移除环境变量控制
+    return cards;
+  }, [router])
 
   // 处理重定向逻辑
   useEffect(() => {
@@ -92,6 +106,7 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
           <p className="mt-2 text-cream-text-dark">加载中...</p>
+          <p className="mt-2 text-cream-text-light text-sm">正在检查用户认证状态</p>
         </div>
       </div>
     )
@@ -99,7 +114,13 @@ export default function DashboardPage() {
 
   // 如果没有用户信息，不渲染仪表板内容
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream-bg">
+        <div className="text-center">
+          <p className="text-cream-text-dark">未检测到用户信息，正在重定向到登录页面...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
