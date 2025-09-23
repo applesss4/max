@@ -42,7 +42,7 @@ export default function NewsPage() {
         }
         
         // 只显示今日新闻
-        const todayNews = data?.filter(item => isToday(item.pub_date)) || [];
+        const todayNews = (data || []).filter((item: NewsItem) => isToday(item.pub_date));
         
         setNewsList(todayNews);
         setFilteredNews(todayNews);
@@ -88,7 +88,7 @@ export default function NewsPage() {
       }
       
       // 只显示今日新闻
-      const todayNews = data?.filter(item => isToday(item.pub_date)) || [];
+      const todayNews = (data || []).filter((item: NewsItem) => isToday(item.pub_date));
       
       setNewsList(todayNews);
       setFilteredNews(todayNews);

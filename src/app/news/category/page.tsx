@@ -31,13 +31,14 @@ export default function CategoryNewsPage() {
         }
 
         // 按来源分组新闻
-        const grouped = data.reduce((acc, n) => {
-          if (!acc[n.source]) {
-            acc[n.source] = [];
+        const grouped: Record<string, NewsItem[]> = {};
+        (data || []).forEach((item: NewsItem) => {
+          const source = item.source;
+          if (!grouped[source]) {
+            grouped[source] = [];
           }
-          acc[n.source].push(n);
-          return acc;
-        }, {} as Record<string, NewsItem[]>);
+          grouped[source].push(item);
+        });
 
         setNewsBySource(grouped);
       } catch (err) {
