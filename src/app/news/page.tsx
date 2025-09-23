@@ -3,17 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { Database } from '@/types/supabase';
 
-interface NewsItem {
-  id: string;
-  title: string;
-  link: string;
-  pub_date: string;
-  summary: string;
-  source: string;
-  category: string | null;
-  created_at: string;
-}
+type NewsItem = Database['public']['Tables']['news']['Row'];
 
 export default function NewsPage() {
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
@@ -23,6 +15,17 @@ export default function NewsPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeSource, setActiveSource] = useState<string | null>(null);
 
+  // 检查是否为今日新闻
+  const isToday = (dateString: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const newsDate = new Date(dateString);
+    newsDate.setHours(0, 0, 0, 0);
+    
+    return today.getTime() === newsDate.getTime();
+  };
+
   useEffect(() => {
     async function fetchNews() {
       try {
@@ -31,16 +34,18 @@ export default function NewsPage() {
         const { data, error } = await supabase
           .from('news')
           .select('*')
-          .order('pub_date', { ascending: false })
-          .limit(100);
+          .order('pub_date', { ascending: false });
         
         if (error) {
           setError(error.message);
           return;
         }
         
-        setNewsList(data || []);
-        setFilteredNews(data || []);
+        // 只显示今日新闻
+        const todayNews = data?.filter(item => isToday(item.pub_date)) || [];
+        
+        setNewsList(todayNews);
+        setFilteredNews(todayNews);
       } catch (err) {
         setError('获取新闻时发生错误');
         console.error(err);
@@ -75,16 +80,18 @@ export default function NewsPage() {
       const { data, error } = await supabase
         .from('news')
         .select('*')
-        .order('pub_date', { ascending: false })
-        .limit(100);
+        .order('pub_date', { ascending: false });
       
       if (error) {
         setError(error.message);
         return;
       }
       
-      setNewsList(data || []);
-      setFilteredNews(data || []);
+      // 只显示今日新闻
+      const todayNews = data?.filter(item => isToday(item.pub_date)) || [];
+      
+      setNewsList(todayNews);
+      setFilteredNews(todayNews);
     } catch (err) {
       setError('刷新新闻时发生错误');
       console.error(err);
@@ -209,7 +216,7 @@ export default function NewsPage() {
       
       {filteredNews.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-500">暂无新闻数据</p>
+          <p className="text-gray-500">暂无今日新闻数据</p>
           <button 
             onClick={handleRefresh}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"

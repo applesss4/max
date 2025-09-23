@@ -29,8 +29,24 @@ const sources = {
 };
 // ----------------- 配置区 -----------------
 
-// 保存到 Supabase
+// 检查是否为今日新闻
+function isToday(dateString) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const newsDate = new Date(dateString);
+  newsDate.setHours(0, 0, 0, 0);
+  
+  return today.getTime() === newsDate.getTime();
+}
+
+// 保存到 Supabase (只保存今日新闻)
 async function saveNews(item) {
+  // 检查是否为今日新闻
+  if (!isToday(item.pub_date)) {
+    return; // 不是今日新闻则跳过
+  }
+
   const { data: existing } = await supabase
     .from("news")
     .select("id")
@@ -41,6 +57,24 @@ async function saveNews(item) {
 
   await supabase.from("news").insert([item]);
   console.log(`✅ 已保存 [${item.source}][${item.category}] ${item.title}`);
+}
+
+// 删除昨天之前的新闻
+async function deleteOldNews() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("news")
+    .delete()
+    .lt("pub_date", yesterday.toISOString());
+
+  if (error) {
+    console.error("❌ 删除旧新闻失败:", error.message);
+  } else {
+    console.log(`✅ 删除了 ${data ? data.length : 0} 条旧新闻`);
+  }
 }
 
 // 抓取 NHK RSS
@@ -112,6 +146,11 @@ async function fetchYomiuri(url, category, pages = 3) {
 
 // 主函数
 async function main() {
+  console.log("🚀 开始抓取今日新闻...");
+  
+  // 删除旧新闻
+  await deleteOldNews();
+
   for (const [source, categories] of Object.entries(sources)) {
     for (const [category, url] of Object.entries(categories)) {
       let news = [];
