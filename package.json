@@ -14,6 +14,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "@types/qrcode": "^1.5.5",
+    "axios": "^1.12.2",
     "cheerio": "^1.1.2",
     "dotenv": "^17.2.2",
     "html2canvas": "^1.4.1",
@@ -36,6 +37,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   },
   "description": "一个使用Next.js和Supabase构建的个人生活管理应用。",

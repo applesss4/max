@@ -257,6 +257,84 @@ export interface Database {
           created_at?: string
         }
       }
+      // 添加衣柜物品表类型定义
+      wardrobe_items: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          category: string
+          color: string | null
+          season: string | null
+          image_url: string | null
+          purchase_date: string | null
+          brand: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          category: string
+          color?: string | null
+          season?: string | null
+          image_url?: string | null
+          purchase_date?: string | null
+          brand?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          category?: string
+          color?: string | null
+          season?: string | null
+          image_url?: string | null
+          purchase_date?: string | null
+          brand?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // 添加穿搭历史表类型定义
+      outfit_history: {
+        Row: {
+          id: string
+          user_id: string
+          outfit_date: string
+          items: Json | null
+          weather: Json | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          outfit_date?: string
+          items?: Json | null
+          weather?: Json | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          outfit_date?: string
+          items?: Json | null
+          weather?: Json | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

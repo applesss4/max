@@ -10,6 +10,7 @@
 - 居家购物清单管理
 - 电商商品管理
 - 日本新闻浏览
+- 智能穿搭助理
 
 ## 快速开始
 
@@ -51,7 +52,9 @@
 - `cart_items` - 购物车项
 - `orders` - 订单
 - `order_items` - 订单项
-- `news` - 新闻
+
+- `wardrobe_items` - 衣柜物品
+- `outfit_history` - 穿搭历史
 
 ## 部署到线上环境
 
@@ -107,11 +110,13 @@ src/
 - 商品与超市关联
 - 行级安全策略确保数据安全
 
-### 日本新闻浏览
-- 定时从NHK RSS源抓取新闻
-- 在Web界面中浏览最新的日本新闻
-- 点击新闻标题跳转到原始新闻页面
-- 支持手动刷新新闻列表
+### 智能穿搭助理
+- 查看今日天气
+- 读取个人衣柜（Supabase数据库）
+- 根据天气生成今日穿搭推荐
+- 上传衣服图片并管理衣柜
+- 保存每日穿搭历史
+- 在主页导航栏增加入口，跳转到新页面
 
 ## 文档
 
@@ -121,10 +126,6 @@ src/
 - [DATABASE_SETUP_SUMMARY.md](DATABASE_SETUP_SUMMARY.md) - 数据库设置总结
 - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - 实现总结报告
 - [ECOMMERCE_TROUBLESHOOTING.md](ECOMMERCE_TROUBLESHOOTING.md) - 电商功能故障排查指南
-- [NEWS_FEATURE.md](NEWS_FEATURE.md) - 新闻功能说明
-- [RSS_FETCHER_GUIDE.md](RSS_FETCHER_GUIDE.md) - RSS抓取功能使用指南
-- [CRON_JOB_SETUP.md](CRON_JOB_SETUP.md) - 定时任务设置指南
-
 ## 开发指南
 
 ### 添加新功能

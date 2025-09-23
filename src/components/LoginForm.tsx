@@ -24,7 +24,12 @@ export default function LoginForm() {
         // 登录成功，跳转到主页
         router.push('/dashboard')
       } else {
-        setError(error || '登录失败')
+        // 提供更明确的错误信息
+        if (error?.includes('Invalid login credentials')) {
+          setError('邮箱或密码错误，请检查后重试')
+        } else {
+          setError(error || '登录失败')
+        }
       }
     } catch (err) {
       setError('登录过程中发生错误')
