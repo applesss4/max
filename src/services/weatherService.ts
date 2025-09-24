@@ -348,7 +348,7 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     // 转换数据格式
     const weatherData: WeatherData = {
       temperature: Math.round(data.main.temp),
-      condition: data.weather[0].main,
+      condition: data.weather[0].description,
       humidity: data.main.humidity,
       windSpeed: data.wind.speed,
       pressure: data.main.pressure,
@@ -423,7 +423,7 @@ export const getWeatherByCoordinates = async (lat: number, lon: number): Promise
     // 转换数据格式
     const weatherData: WeatherData = {
       temperature: Math.round(data.main.temp),
-      condition: data.weather[0].main,
+      condition: data.weather[0].description,
       humidity: data.main.humidity,
       windSpeed: data.wind.speed,
       pressure: data.main.pressure,
