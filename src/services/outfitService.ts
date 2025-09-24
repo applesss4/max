@@ -199,171 +199,224 @@ export const generateOptimizedOutfitRecommendation = (
   // 获取所有可用的颜色
   const availableColors = [...new Set(wardrobeItems.map((item: any) => item.color).filter(Boolean))] as string[]
   
-  // 根据温度推荐基础搭配
+  // 根据天气和温度推荐基础搭配
   if (weather.temperature > 28) {
     // 夏季炎热：推荐轻薄透气的搭配
-    // 上衣
-    const tops = wardrobeItems.filter((item: any) => 
-      item.category === '上衣' && (item.season === '夏' || item.season === '四季')
-    )
-    
-    // 裤子/裙子
-    const bottoms = wardrobeItems.filter((item: any) => 
-      (item.category === '裤子' || item.category === '裙子') && (item.season === '夏' || item.season === '四季')
-    )
-    
-    // 鞋子
-    const shoes = wardrobeItems.filter((item: any) => 
-      item.category === '鞋子' && (item.season === '夏' || item.season === '四季')
-    )
-    
-    // 选择上衣
-    if (tops.length > 0) {
-      // 优先选择浅色上衣（夏季推荐）
-      const lightColoredTops = tops.filter((item: any) => 
-        item.color && (item.color.includes('白') || item.color.includes('浅') || item.color.includes('米'))
-      )
-      
-      if (lightColoredTops.length > 0) {
-        recommendedItems.push(lightColoredTops[0])
-      } else {
-        recommendedItems.push(tops[0])
-      }
-    }
-    
-    // 选择下装
-    if (bottoms.length > 0) {
-      // 优先选择浅色下装
-      const lightColoredBottoms = bottoms.filter((item: any) => 
-        item.color && (item.color.includes('白') || item.color.includes('浅') || item.color.includes('米') || item.color.includes('卡其'))
-      )
-      
-      if (lightColoredBottoms.length > 0) {
-        recommendedItems.push(lightColoredBottoms[0])
-      } else {
-        recommendedItems.push(bottoms[0])
-      }
-    }
-    
-    // 选择鞋子
-    if (shoes.length > 0) {
-      recommendedItems.push(shoes[0])
-    }
+    recommendedItems = generateSummerOutfit(wardrobeItems);
   } else if (weather.temperature > 20) {
     // 春秋季：推荐舒适适中的搭配
-    // 上衣
-    const tops = wardrobeItems.filter((item: any) => 
-      item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 裤子/裙子
-    const bottoms = wardrobeItems.filter((item: any) => 
-      (item.category === '裤子' || item.category === '裙子') && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 鞋子
-    const shoes = wardrobeItems.filter((item: any) => 
-      item.category === '鞋子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 选择上衣
-    if (tops.length > 0) {
-      recommendedItems.push(tops[0])
-    }
-    
-    // 选择下装
-    if (bottoms.length > 0) {
-      recommendedItems.push(bottoms[0])
-    }
-    
-    // 选择鞋子
-    if (shoes.length > 0) {
-      recommendedItems.push(shoes[0])
-    }
+    recommendedItems = generateSpringAutumnOutfit(wardrobeItems);
   } else if (weather.temperature > 10) {
     // 早春晚秋：推荐稍厚一些的搭配
-    // 外套
-    const outerwear = wardrobeItems.filter((item: any) => 
-      item.category === '外套' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 上衣
-    const tops = wardrobeItems.filter((item: any) => 
-      item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 裤子/裙子
-    const bottoms = wardrobeItems.filter((item: any) => 
-      (item.category === '裤子' || item.category === '裙子') && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 鞋子
-    const shoes = wardrobeItems.filter((item: any) => 
-      item.category === '鞋子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-    )
-    
-    // 选择外套
-    if (outerwear.length > 0) {
-      recommendedItems.push(outerwear[0])
-    }
-    
-    // 选择上衣
-    if (tops.length > 0) {
-      recommendedItems.push(tops[0])
-    }
-    
-    // 选择下装
-    if (bottoms.length > 0) {
-      recommendedItems.push(bottoms[0])
-    }
-    
-    // 选择鞋子
-    if (shoes.length > 0) {
-      recommendedItems.push(shoes[0])
-    }
+    recommendedItems = generateEarlyLateSeasonOutfit(wardrobeItems);
   } else {
     // 冬季寒冷：推荐保暖搭配
-    // 外套
-    const outerwear = wardrobeItems.filter((item: any) => 
-      item.category === '外套' && (item.season === '冬' || item.season === '四季')
+    recommendedItems = generateWinterOutfit(wardrobeItems);
+  }
+  
+  // 添加配饰（根据色彩搭配原则）
+  recommendedItems = addAccessories(recommendedItems, wardrobeItems);
+  
+  // 应用色彩搭配原则优化推荐
+  const optimizedItems = applyColorCoordinationPrinciples(recommendedItems, availableColors);
+  
+  // 生成详细的推荐说明
+  const notes = generateDetailedRecommendationNotes(weather, optimizedItems);
+  
+  return {
+    items: optimizedItems,
+    notes
+  }
+}
+
+// 生成夏季穿搭
+const generateSummerOutfit = (wardrobeItems: any[]): any[] => {
+  const recommendedItems: any[] = [];
+  
+  // 上衣
+  const tops = wardrobeItems.filter((item: any) => 
+    item.category === '上衣' && (item.season === '夏' || item.season === '四季')
+  )
+  
+  // 裤子/裙子
+  const bottoms = wardrobeItems.filter((item: any) => 
+    (item.category === '裤子' || item.category === '裙子') && (item.season === '夏' || item.season === '四季')
+  )
+  
+  // 鞋子
+  const shoes = wardrobeItems.filter((item: any) => 
+    item.category === '鞋子' && (item.season === '夏' || item.season === '四季')
+  )
+  
+  // 选择上衣
+  if (tops.length > 0) {
+    // 优先选择浅色上衣（夏季推荐）
+    const lightColoredTops = tops.filter((item: any) => 
+      item.color && (item.color.includes('白') || item.color.includes('浅') || item.color.includes('米'))
     )
     
-    // 上衣
-    const tops = wardrobeItems.filter((item: any) => 
-      item.category === '上衣' && (item.season === '冬' || item.season === '四季')
-    )
-    
-    // 裤子/裙子
-    const bottoms = wardrobeItems.filter((item: any) => 
-      (item.category === '裤子' || item.category === '裙子') && (item.season === '冬' || item.season === '四季')
-    )
-    
-    // 鞋子
-    const shoes = wardrobeItems.filter((item: any) => 
-      item.category === '鞋子' && (item.season === '冬' || item.season === '四季')
-    )
-    
-    // 选择外套
-    if (outerwear.length > 0) {
-      recommendedItems.push(outerwear[0])
-    }
-    
-    // 选择上衣
-    if (tops.length > 0) {
+    if (lightColoredTops.length > 0) {
+      recommendedItems.push(lightColoredTops[0])
+    } else {
       recommendedItems.push(tops[0])
-    }
-    
-    // 选择下装
-    if (bottoms.length > 0) {
-      recommendedItems.push(bottoms[0])
-    }
-    
-    // 选择鞋子
-    if (shoes.length > 0) {
-      recommendedItems.push(shoes[0])
     }
   }
   
+  // 选择下装
+  if (bottoms.length > 0) {
+    // 优先选择浅色下装
+    const lightColoredBottoms = bottoms.filter((item: any) => 
+      item.color && (item.color.includes('白') || item.color.includes('浅') || item.color.includes('米') || item.color.includes('卡其'))
+    )
+    
+    if (lightColoredBottoms.length > 0) {
+      recommendedItems.push(lightColoredBottoms[0])
+    } else {
+      recommendedItems.push(bottoms[0])
+    }
+  }
+  
+  // 选择鞋子
+  if (shoes.length > 0) {
+    recommendedItems.push(shoes[0])
+  }
+  
+  return recommendedItems;
+}
+
+// 生成春秋季穿搭
+const generateSpringAutumnOutfit = (wardrobeItems: any[]): any[] => {
+  const recommendedItems: any[] = [];
+  
+  // 上衣
+  const tops = wardrobeItems.filter((item: any) => 
+    item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 裤子/裙子
+  const bottoms = wardrobeItems.filter((item: any) => 
+    (item.category === '裤子' || item.category === '裙子') && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 鞋子
+  const shoes = wardrobeItems.filter((item: any) => 
+    item.category === '鞋子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 选择上衣
+  if (tops.length > 0) {
+    recommendedItems.push(tops[0])
+  }
+  
+  // 选择下装
+  if (bottoms.length > 0) {
+    recommendedItems.push(bottoms[0])
+  }
+  
+  // 选择鞋子
+  if (shoes.length > 0) {
+    recommendedItems.push(shoes[0])
+  }
+  
+  return recommendedItems;
+}
+
+// 生成早春晚秋穿搭
+const generateEarlyLateSeasonOutfit = (wardrobeItems: any[]): any[] => {
+  const recommendedItems: any[] = [];
+  
+  // 外套
+  const outerwear = wardrobeItems.filter((item: any) => 
+    item.category === '外套' && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 上衣
+  const tops = wardrobeItems.filter((item: any) => 
+    item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 裤子/裙子
+  const bottoms = wardrobeItems.filter((item: any) => 
+    (item.category === '裤子' || item.category === '裙子') && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 鞋子
+  const shoes = wardrobeItems.filter((item: any) => 
+    item.category === '鞋子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
+  )
+  
+  // 选择外套
+  if (outerwear.length > 0) {
+    recommendedItems.push(outerwear[0])
+  }
+  
+  // 选择上衣
+  if (tops.length > 0) {
+    recommendedItems.push(tops[0])
+  }
+  
+  // 选择下装
+  if (bottoms.length > 0) {
+    recommendedItems.push(bottoms[0])
+  }
+  
+  // 选择鞋子
+  if (shoes.length > 0) {
+    recommendedItems.push(shoes[0])
+  }
+  
+  return recommendedItems;
+}
+
+// 生成冬季穿搭
+const generateWinterOutfit = (wardrobeItems: any[]): any[] => {
+  const recommendedItems: any[] = [];
+  
+  // 外套
+  const outerwear = wardrobeItems.filter((item: any) => 
+    item.category === '外套' && (item.season === '冬' || item.season === '四季')
+  )
+  
+  // 上衣
+  const tops = wardrobeItems.filter((item: any) => 
+    item.category === '上衣' && (item.season === '冬' || item.season === '四季')
+  )
+  
+  // 裤子/裙子
+  const bottoms = wardrobeItems.filter((item: any) => 
+    (item.category === '裤子' || item.category === '裙子') && (item.season === '冬' || item.season === '四季')
+  )
+  
+  // 鞋子
+  const shoes = wardrobeItems.filter((item: any) => 
+    item.category === '鞋子' && (item.season === '冬' || item.season === '四季')
+  )
+  
+  // 选择外套
+  if (outerwear.length > 0) {
+    recommendedItems.push(outerwear[0])
+  }
+  
+  // 选择上衣
+  if (tops.length > 0) {
+    recommendedItems.push(tops[0])
+  }
+  
+  // 选择下装
+  if (bottoms.length > 0) {
+    recommendedItems.push(bottoms[0])
+  }
+  
+  // 选择鞋子
+  if (shoes.length > 0) {
+    recommendedItems.push(shoes[0])
+  }
+  
+  return recommendedItems;
+}
+
+// 添加配饰
+const addAccessories = (recommendedItems: any[], wardrobeItems: any[]): any[] => {
   // 添加配饰（根据色彩搭配原则）
   const accessories = wardrobeItems.filter((item: any) => 
     item.category === '配饰'
@@ -406,19 +459,53 @@ export const generateOptimizedOutfitRecommendation = (
     }
   }
   
-  // 应用色彩搭配原则优化推荐
-  const optimizedItems = applyColorCoordinationPrinciples(recommendedItems, availableColors)
-  
-  // 生成推荐说明
-  const temperatureDescription = getTemperatureDescription(weather.temperature)
-  const colorAdvice = getColorCoordinationAdvice(optimizedItems)
-  
-  const notes = `根据今日${weather.temperature}°C的${weather.condition}天气，为您推荐这套${temperatureDescription}穿搭。${colorAdvice}`
-  
-  return {
-    items: optimizedItems,
-    notes
+  return recommendedItems;
+}
+
+// 生成详细的推荐说明
+const generateDetailedRecommendationNotes = (
+  weather: { temperature: number; condition: string },
+  items: any[]
+): string => {
+  // 根据温度生成描述
+  let temperatureDescription = '';
+  if (weather.temperature > 28) {
+    temperatureDescription = '炎热的夏季';
+  } else if (weather.temperature > 20) {
+    temperatureDescription = '舒适的春秋季节';
+  } else if (weather.temperature > 10) {
+    temperatureDescription = '稍凉的早春晚秋';
+  } else {
+    temperatureDescription = '寒冷的冬季';
   }
+  
+  // 根据天气状况添加建议
+  let weatherAdvice = '';
+  if (weather.condition.includes('雨')) {
+    weatherAdvice = '今天有雨，建议携带雨具。';
+  } else if (weather.condition.includes('雪')) {
+    weatherAdvice = '今天有雪，注意保暖防滑。';
+  } else if (weather.condition.includes('晴')) {
+    weatherAdvice = '今天天气晴朗，适合户外活动。';
+  } else if (weather.condition.includes('云') || weather.condition.includes('阴')) {
+    weatherAdvice = '今天多云，温度适中。';
+  }
+  
+  // 生成搭配说明
+  const colorAdvice = getColorCoordinationAdvice(items);
+  
+  // 生成风格建议
+  let styleAdvice = '';
+  const categories = items.map(item => item.category);
+  if (categories.includes('外套')) {
+    styleAdvice = '这套搭配层次分明，适合多种场合。';
+  } else if (categories.includes('裙子')) {
+    styleAdvice = '这套搭配优雅时尚，适合日常或约会场合。';
+  } else {
+    styleAdvice = '这套搭配简洁舒适，适合日常工作和生活。';
+  }
+  
+  return `根据今日${weather.temperature}°C的${temperatureDescription}和${weather.condition}天气，为您推荐这套穿搭。${weatherAdvice}${colorAdvice}${styleAdvice}`;
 }
 
 // 获取温度描述

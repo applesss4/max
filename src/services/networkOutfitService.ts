@@ -15,8 +15,12 @@ export const getNetworkOutfitRecommendation = async (
     // 根据温度和天气条件生成搜索关键词
     const searchQuery = generateSearchQuery(temperature, condition);
     
+    console.log('生成的搜索关键词:', searchQuery);
+    
     // 直接使用Pexels API获取图片（因为我们已经有Pexels API密钥）
     const imageUrl = await getPexelsOutfitImage(searchQuery);
+    
+    console.log('从Pexels获取的图片URL:', imageUrl);
     
     return imageUrl || null;
   } catch (error) {
@@ -58,7 +62,9 @@ const generateSearchQuery = (temperature: number, condition: string): string => 
   }
   
   // 组合搜索关键词 (使用英文以获得更好的搜索结果)
-  return `${season} ${weatherDesc} outfit fashion`.trim();
+  const query = `${season} ${weatherDesc} outfit fashion`.trim();
+  console.log('生成的搜索关键词:', query);
+  return query;
 };
 
 /**
@@ -108,16 +114,23 @@ export const getPexelsOutfitImage = async (query: string): Promise<string | null
     
     const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`;
     
+    console.log('Pexels API请求URL:', url);
+    
     const response = await axios.get(url, {
       headers: {
         'Authorization': apiKey
       }
     });
     
+    console.log('Pexels API响应:', response.data);
+    
     if (response.data && response.data.photos && response.data.photos.length > 0) {
-      return response.data.photos[0].src.medium;
+      const imageUrl = response.data.photos[0].src.medium;
+      console.log('获取到的图片URL:', imageUrl);
+      return imageUrl;
     }
     
+    console.log('未找到相关图片');
     return null;
   } catch (error) {
     console.error('获取Pexels图片失败:', error);

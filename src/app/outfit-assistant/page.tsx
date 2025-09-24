@@ -1132,6 +1132,9 @@ export default function OutfitAssistantPage() {
                         {weatherData.temperature}°C
                       </div>
                       <div>
+                        <p className="text-cream-text">
+                          城市: {weatherData.city}, {weatherData.country}
+                        </p>
                         <p className="text-cream-text">天气: {weatherData.condition}</p>
                         <p className="text-cream-text-light text-sm">湿度: {weatherData.humidity}%</p>
                       </div>
@@ -1278,6 +1281,19 @@ export default function OutfitAssistantPage() {
                     <div className="mb-6 p-4 bg-cream-bg rounded-lg border border-cream-border">
                       <h3 className="font-medium text-cream-text-dark mb-2">推荐说明</h3>
                       <p className="text-cream-text">{recommendation.notes}</p>
+                      {recommendation.networkImageUrl && (
+                        <div className="mt-4">
+                          <h4 className="font-medium text-cream-text-dark mb-2">网络推荐参考图</h4>
+                          <div className="flex justify-center">
+                            <img 
+                              src={recommendation.networkImageUrl} 
+                              alt="网络推荐搭配参考" 
+                              className="max-w-full h-auto rounded-lg shadow-md"
+                              style={{ maxHeight: '300px' }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mb-6">
@@ -1310,6 +1326,15 @@ export default function OutfitAssistantPage() {
                                   <span className="inline-block px-2 py-1 text-xs bg-cream-accent text-white rounded">
                                     {item.season}
                                   </span>
+                                </div>
+                              )}
+                              {item.tags && item.tags.length > 0 && (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {item.tags.slice(0, 2).map((tag: string, index: number) => (
+                                    <span key={index} className="text-xs text-cream-accent bg-cream-accent bg-opacity-20 px-1 rounded">
+                                      #{tag}
+                                    </span>
+                                  ))}
                                 </div>
                               )}
                             </div>
