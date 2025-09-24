@@ -5,8 +5,26 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { addWardrobeItem, updateWardrobeItem, deleteWardrobeItem, saveOutfitHistory, getOutfitHistory, generateOptimizedOutfitRecommendation } from '@/services/outfitService'
-import { getWeatherByCity, getWeatherByCoordinates, getOneCallWeather, OneCallResponse, WeatherData as WeatherApiData } from '@/services/weatherService'
+import { 
+  getWardrobeItems, 
+  getOutfitHistory, 
+  getOutfitPreviews,
+  addWardrobeItem, 
+  updateWardrobeItem, 
+  deleteWardrobeItem, 
+  saveOutfitHistory, 
+  saveOutfitPreview,
+  updateOutfitPreview,
+  deleteOutfitPreview,
+  generateOptimizedOutfitRecommendation 
+} from '@/services/outfitService'
+import { 
+  getWeatherByCity, 
+  getWeatherByCoordinates, 
+  getOneCallWeather, 
+  OneCallResponse, 
+  WeatherData as WeatherApiData 
+} from '@/services/weatherService'
 
 // 定义类型
 interface WardrobeItem {
@@ -25,8 +43,6 @@ interface WardrobeItem {
   updated_at: string
 }
 
-// 从天气服务导入的WeatherData接口会覆盖此定义
-
 interface OutfitRecommendation {
   items: WardrobeItem[]
   notes: string
@@ -43,11 +59,21 @@ interface OutfitHistoryItem {
   updated_at: string
 }
 
+// 定义搭配预览类型
+interface OutfitPreview {
+  id: string
+  user_id: string
+  name: string
+  items: WardrobeItem[]
+  created_at: string
+  updated_at: string
+}
+
 // 定义标签类型
 type Tag = '商务' | '休闲' | '運動' | '正式' | '日常' | '约会' | '度假' | '居家';
 
 // 定义穿搭预览类型
-interface OutfitPreview {
+interface OutfitPreviewModal {
   id: string
   name: string
   items: WardrobeItem[]
@@ -83,6 +109,7 @@ export default function OutfitAssistantPage() {
     notes: ''
   })
   const [outfitPreviews, setOutfitPreviews] = useState<OutfitPreview[]>([])
+  const [loadingPreviews, setLoadingPreviews] = useState(true)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPreview, setSelectedPreview] = useState<OutfitPreview | null>(null)
   const [showWardrobeSelector, setShowWardrobeSelector] = useState(false)
@@ -93,14 +120,11 @@ export default function OutfitAssistantPage() {
 
     setLoadingWardrobe(true)
     try {
-      const { data, error } = await supabase
-        .from('wardrobe_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
+      const { data, error } = await getWardrobeItems(user.id)
       if (error) throw error
-      setWardrobeItems(data || [])
+      if (data) {
+        setWardrobeItems(data)
+      }
     } catch (error) {
       console.error('获取衣柜物品失败:', error)
       alert('获取衣柜物品失败，请稍后重试')
@@ -125,6 +149,30 @@ export default function OutfitAssistantPage() {
       alert('获取穿搭历史失败，请稍后重试')
     } finally {
       setLoadingHistory(false)
+    }
+  }, [user])
+
+  // 获取搭配预览
+  const fetchOutfitPreviews = useCallback(async () => {
+    if (!user) return
+
+    setLoadingPreviews(true)
+    try {
+      const { data, error } = await getOutfitPreviews(user.id)
+      if (error) throw error
+      if (data) {
+        // 解析items字段
+        const parsedData = data.map((preview: any) => ({
+          ...preview,
+          items: Array.isArray(preview.items) ? preview.items : []
+        }))
+        setOutfitPreviews(parsedData)
+      }
+    } catch (error) {
+      console.error('获取搭配预览失败:', error)
+      alert('获取搭配预览失败，请稍后重试')
+    } finally {
+      setLoadingPreviews(false)
     }
   }, [user])
 
@@ -249,44 +297,103 @@ export default function OutfitAssistantPage() {
       setLoadingRecommendation(false)
     }
   }, [weatherData, wardrobeItems])
-  // 保存穿搭预览
-  const saveOutfitPreview = () => {
-    if (selectedPreview) {
-      // 将搭配添加到预览列表
-      setOutfitPreviews(prev => {
-        // 检查是否已存在于列表中
-        const exists = prev.some(preview => preview.id === selectedPreview.id);
-        if (exists) {
-          // 如果已存在，更新它
-          return prev.map(preview => preview.id === selectedPreview.id ? selectedPreview : preview);
-        } else {
-          // 如果不存在，添加到列表开头
-          return [selectedPreview, ...prev];
-        }
-      });
-      alert(`穿搭预览 "${selectedPreview.name}" 已保存!`);
-      setShowPreviewModal(false);
+
+  // 保存穿搭预览到数据库
+  const saveOutfitPreviewToDB = async (preview: any) => {
+    try {
+      const { data, error } = await saveOutfitPreview(preview)
+      if (error) throw error
+      return { data, error: null }
+    } catch (error) {
+      console.error('保存搭配预览失败:', error)
+      return { data: null, error }
     }
-  };
+  }
+
+  // 保存穿搭预览
+  const handleSaveOutfitPreview = async () => {
+    if (selectedPreview && user) {
+      try {
+        // 检查是否是新预览还是更新现有预览
+        if (selectedPreview.id && selectedPreview.id.length > 10 && !selectedPreview.id.startsWith('temp_')) {
+          // 更新现有预览
+          const { data, error } = await updateOutfitPreview(selectedPreview.id, {
+            name: selectedPreview.name,
+            items: selectedPreview.items
+          })
+          
+          if (error) throw error
+          
+          // 更新本地状态
+          setOutfitPreviews(prev => 
+            prev.map(preview => preview.id === selectedPreview.id ? {...selectedPreview, updated_at: new Date().toISOString()} : preview)
+          )
+        } else {
+          // 创建新预览
+          const newPreview = {
+            user_id: user.id,
+            name: selectedPreview.name,
+            items: selectedPreview.items
+          }
+          
+          const { data, error } = await saveOutfitPreviewToDB(newPreview)
+          
+          if (error) throw error
+          
+          if (data) {
+            // 添加到本地状态
+            setOutfitPreviews(prev => [{
+              ...data,
+              items: data.items || selectedPreview.items
+            }, ...prev])
+          }
+        }
+        
+        alert(`穿搭预览 "${selectedPreview.name}" 已保存!`)
+        setShowPreviewModal(false)
+      } catch (error) {
+        console.error('保存搭配预览失败:', error)
+        alert('保存搭配预览失败，请稍后重试')
+      }
+    }
+  }
 
   // 保存当前推荐为穿搭预览
-  const saveCurrentRecommendationAsPreview = () => {
-    if (recommendation && recommendation.items.length > 0) {
-      const newPreview: OutfitPreview = {
-        id: Date.now().toString(),
-        name: `今日推荐 ${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
-        items: recommendation.items,
-        createdAt: new Date().toISOString()
-      };
-      
-      setOutfitPreviews(prev => [newPreview, ...prev]);
-      setSelectedPreview(newPreview);
-      setShowPreviewModal(true);
-      alert('推荐搭配已保存为预览!');
+  const saveCurrentRecommendationAsPreview = async () => {
+    if (recommendation && recommendation.items.length > 0 && user) {
+      try {
+        const newPreview = {
+          user_id: user.id,
+          name: `今日推荐 ${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
+          items: recommendation.items
+        }
+        
+        const { data, error } = await saveOutfitPreviewToDB(newPreview)
+        
+        if (error) throw error
+        
+        if (data) {
+          // 添加到本地状态
+          setOutfitPreviews(prev => [{
+            ...data,
+            items: data.items || recommendation.items
+          }, ...prev])
+          
+          setSelectedPreview({
+            ...data,
+            items: data.items || recommendation.items
+          } as OutfitPreview)
+          setShowPreviewModal(true)
+          alert('推荐搭配已保存为预览!')
+        }
+      } catch (error) {
+        console.error('保存推荐搭配失败:', error)
+        alert('保存推荐搭配失败，请稍后重试')
+      }
     } else {
-      alert('当前没有推荐搭配可保存!');
+      alert('当前没有推荐搭配可保存!')
     }
-  };
+  }
 
   // 衣装履歴保存
   const handleSaveOutfit = async () => {
@@ -330,25 +437,59 @@ export default function OutfitAssistantPage() {
   };
 
   // 从历史记录创建穿搭预览
-  const createPreviewFromHistory = (historyItem: OutfitHistoryItem) => {
+  const createPreviewFromHistory = async (historyItem: OutfitHistoryItem) => {
     try {
-      const items = JSON.parse(historyItem.items);
-      const newPreview: OutfitPreview = {
-        id: Date.now().toString(),
-        name: `历史搭配 ${new Date(historyItem.outfit_date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
-        items: items,
-        createdAt: historyItem.created_at
-      };
-      
-      setOutfitPreviews(prev => [newPreview, ...prev]);
-      setSelectedPreview(newPreview);
-      setShowPreviewModal(true);
-      alert('历史搭配已添加到预览!');
+      const items = JSON.parse(historyItem.items)
+      if (user) {
+        const newPreview = {
+          user_id: user.id,
+          name: `历史搭配 ${new Date(historyItem.outfit_date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
+          items: items
+        }
+        
+        const { data, error } = await saveOutfitPreviewToDB(newPreview)
+        
+        if (error) throw error
+        
+        if (data) {
+          // 添加到本地状态
+          setOutfitPreviews(prev => [{
+            ...data,
+            items: data.items || items
+          }, ...prev])
+          
+          setSelectedPreview({
+            ...data,
+            items: data.items || items
+          } as OutfitPreview)
+          setShowPreviewModal(true)
+          alert('历史搭配已添加到预览!')
+        }
+      }
     } catch (error) {
-      console.error('解析历史记录失败:', error);
-      alert('解析历史记录失败');
+      console.error('解析历史记录失败:', error)
+      alert('解析历史记录失败')
     }
-  };
+  }
+
+  // 删除搭配预览
+  const deleteOutfitPreviewById = async (id: string) => {
+    try {
+      const { error } = await deleteOutfitPreview(id)
+      if (error) throw error
+      
+      // 更新本地状态
+      setOutfitPreviews(prev => prev.filter(preview => preview.id !== id))
+      if (selectedPreview?.id === id) {
+        setSelectedPreview(null)
+      }
+      
+      alert('搭配预览已删除!')
+    } catch (error) {
+      console.error('删除搭配预览失败:', error)
+      alert('删除搭配预览失败，请稍后重试')
+    }
+  }
 
   // 衣装统计信息计算
   const getWardrobeStats = () => {
@@ -529,59 +670,89 @@ export default function OutfitAssistantPage() {
   }
 
   // 从衣柜选择器保存搭配
-  const saveOutfitFromWardrobeSelector = () => {
-    if (selectedPreview) {
-      // 将新搭配添加到预览列表
-      setOutfitPreviews(prev => {
-        // 检查是否已存在于列表中
-        const exists = prev.some(preview => preview.id === selectedPreview.id);
-        if (exists) {
-          // 如果已存在，更新它
-          return prev.map(preview => preview.id === selectedPreview.id ? selectedPreview : preview);
+  const saveOutfitFromWardrobeSelector = async () => {
+    if (selectedPreview && user) {
+      try {
+        // 检查是否是新预览还是更新现有预览
+        if (selectedPreview.id && selectedPreview.id.length > 10 && !selectedPreview.id.startsWith('temp_')) {
+          // 更新现有预览
+          const { data, error } = await updateOutfitPreview(selectedPreview.id, {
+            name: selectedPreview.name,
+            items: selectedPreview.items
+          })
+          
+          if (error) throw error
+          
+          // 更新本地状态
+          setOutfitPreviews(prev => 
+            prev.map(preview => preview.id === selectedPreview.id ? {...selectedPreview, updated_at: new Date().toISOString()} : preview)
+          )
         } else {
-          // 如果不存在，添加到列表开头
-          return [selectedPreview, ...prev];
+          // 创建新预览
+          const newPreview = {
+            user_id: user.id,
+            name: selectedPreview.name,
+            items: selectedPreview.items
+          }
+          
+          const { data, error } = await saveOutfitPreviewToDB(newPreview)
+          
+          if (error) throw error
+          
+          if (data) {
+            // 添加到本地状态
+            setOutfitPreviews(prev => [{
+              ...data,
+              items: data.items || selectedPreview.items
+            }, ...prev])
+          }
         }
-      });
-      setShowWardrobeSelector(false);
-      alert(`搭配 "${selectedPreview.name}" 已保存!`);
+        
+        setShowWardrobeSelector(false)
+        alert(`搭配 "${selectedPreview.name}" 已保存!`)
+      } catch (error) {
+        console.error('保存搭配失败:', error)
+        alert('保存搭配失败，请稍后重试')
+      }
     }
-  };
+  }
 
   // 从衣柜创建新的搭配预览
   const createNewPreviewFromWardrobe = () => {
     const newPreview: OutfitPreview = {
-      id: Date.now().toString(),
+      id: `temp_${Date.now()}`,
+      user_id: user?.id || '',
       name: `搭配 ${outfitPreviews.length + 1}`,
       items: [],
-      createdAt: new Date().toISOString()
-    };
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
     
-    setSelectedPreview(newPreview);
+    setSelectedPreview(newPreview)
     // 不再立即添加到预览列表中，而是等到用户明确保存时再添加
-    setShowWardrobeSelector(true);
-  };
+    setShowWardrobeSelector(true)
+  }
 
   // 处理衣柜选择器中的物品选择
   const handleWardrobeItemSelect = (item: WardrobeItem) => {
     if (selectedPreview) {
       // 检查是否已选择该物品
-      const isItemSelected = selectedPreview.items.some(i => i.id === item.id);
+      const isItemSelected = selectedPreview.items.some(i => i.id === item.id)
       if (isItemSelected) {
         // 如果已选择，则移除
         setSelectedPreview(prev => prev ? {
           ...prev,
           items: prev.items.filter(i => i.id !== item.id)
-        } : null);
+        } : null)
       } else {
         // 如果未选择，则添加
         setSelectedPreview(prev => prev ? {
           ...prev,
           items: [...prev.items, item]
-        } : null);
+        } : null)
       }
     }
-  };
+  }
 
   // 处理重定向逻辑
   useEffect(() => {
@@ -604,6 +775,13 @@ export default function OutfitAssistantPage() {
       fetchOutfitHistory()
     }
   }, [user, activeTab, fetchOutfitHistory])
+
+  // 获取搭配预览
+  useEffect(() => {
+    if (user && activeTab === 'preview') {
+      fetchOutfitPreviews()
+    }
+  }, [user, activeTab, fetchOutfitPreviews])
 
   // 当天气数据和衣柜物品都准备好后，生成推荐
   useEffect(() => {
@@ -1191,7 +1369,14 @@ export default function OutfitAssistantPage() {
                   </button>
                 </div>
                 
-                {outfitPreviews.length > 0 ? (
+                {loadingPreviews ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mb-2"></div>
+                      <p className="text-cream-text-dark">正在加载搭配预览...</p>
+                    </div>
+                  </div>
+                ) : outfitPreviews.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {outfitPreviews.map((preview) => (
                       <div key={preview.id} className="bg-cream-bg rounded-lg p-4 border border-cream-border">
@@ -1234,7 +1419,7 @@ export default function OutfitAssistantPage() {
                         )}
                         
                         <p className="text-cream-text-light text-xs">
-                          {new Date(preview.createdAt).toLocaleDateString('zh-CN', {
+                          {new Date(preview.created_at).toLocaleDateString('zh-CN', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
@@ -1252,13 +1437,7 @@ export default function OutfitAssistantPage() {
                             添加物品
                           </button>
                           <button
-                            onClick={() => {
-                              // 删除预览
-                              setOutfitPreviews(prev => prev.filter(p => p.id !== preview.id));
-                              if (selectedPreview?.id === preview.id) {
-                                setSelectedPreview(null);
-                              }
-                            }}
+                            onClick={() => deleteOutfitPreviewById(preview.id)}
                             className="text-cream-text-light hover:text-red-500 text-xs"
                           >
                             删除
@@ -1803,7 +1982,7 @@ export default function OutfitAssistantPage() {
                     </button>
                     {selectedPreview.items.length > 0 && (
                       <button
-                        onClick={saveOutfitPreview}
+                        onClick={handleSaveOutfitPreview}
                         className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
                       >
                         保存搭配

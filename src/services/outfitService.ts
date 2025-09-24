@@ -107,6 +107,78 @@ export const saveOutfitHistory = async (outfit: any) => {
   }
 }
 
+// 获取搭配预览
+export const getOutfitPreviews = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('outfit_previews')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return { data, error: null }
+  } catch (error) {
+    console.error('获取搭配预览失败:', error)
+    return { data: null, error }
+  }
+}
+
+// 保存搭配预览
+export const saveOutfitPreview = async (preview: any) => {
+  try {
+    // @ts-ignore
+    const { data, error } = await supabase
+      .from('outfit_previews')
+      .insert(preview)
+      .select()
+
+    if (error) throw error
+    // 返回数组中的第一个元素，而不是使用.single()
+    return { data: data?.[0] || null, error: null }
+  } catch (error) {
+    console.error('保存搭配预览失败:', error)
+    return { data: null, error }
+  }
+}
+
+// 更新搭配预览
+export const updateOutfitPreview = async (id: string, updates: any) => {
+  try {
+    // @ts-ignore
+    const { data, error } = await supabase
+      .from('outfit_previews')
+      .update(updates)
+      // @ts-ignore
+      .eq('id', id)
+      .select()
+
+    if (error) throw error
+    // 返回数组中的第一个元素，而不是使用.single()
+    return { data: data?.[0] || null, error: null }
+  } catch (error) {
+    console.error('更新搭配预览失败:', error)
+    return { data: null, error }
+  }
+}
+
+// 删除搭配预览
+export const deleteOutfitPreview = async (id: string) => {
+  try {
+    // @ts-ignore
+    const { error } = await supabase
+      .from('outfit_previews')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+    return { error: null }
+  } catch (error) {
+    console.error('删除搭配预览失败:', error)
+    return { error }
+  }
+}
+
 // 根据天气和衣柜物品生成穿搭推荐（简化版，用于向后兼容）
 export const generateOutfitRecommendation = (
   weather: { temperature: number; condition: string },
