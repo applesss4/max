@@ -19,8 +19,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS work_schedules;
 -- 为店铺时薪表启用实时监控
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS shop_hourly_rates;
 
--- 为条形码表启用实时监控
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS barcodes;
+-- 删除条形码表的实时监控配置（已移除条形码功能）
 
 -- 验证表是否已添加到发布中
 -- SELECT pubname, schemaname, tablename 

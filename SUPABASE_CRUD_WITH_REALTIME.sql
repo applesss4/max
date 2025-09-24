@@ -52,22 +52,6 @@ CREATE TABLE IF NOT EXISTS shop_hourly_rates (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 1.5 条形码表
-CREATE TABLE IF NOT EXISTS barcodes (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  barcode_value VARCHAR(255) NOT NULL, -- 条形码值
-  barcode_type VARCHAR(50) NOT NULL, -- 条形码类型 (如: EAN-13, QR Code等)
-  product_name VARCHAR(255), -- 产品名称
-  product_description TEXT, -- 产品描述
-  product_price DECIMAL(10,2), -- 产品价格
-  product_category VARCHAR(100), -- 产品分类
-  product_image_url TEXT, -- 产品图片URL
-  scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- 扫描时间
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- 1.6 电商表结构
 -- 商品表
 CREATE TABLE IF NOT EXISTS products (
@@ -134,9 +118,6 @@ CREATE INDEX IF NOT EXISTS idx_work_schedules_user_id ON work_schedules(user_id)
 CREATE INDEX IF NOT EXISTS idx_work_schedules_work_date ON work_schedules(work_date);
 CREATE INDEX IF NOT EXISTS idx_shop_hourly_rates_user_id ON shop_hourly_rates(user_id);
 CREATE INDEX IF NOT EXISTS idx_shop_hourly_rates_shop_name ON shop_hourly_rates(shop_name);
-CREATE INDEX IF NOT EXISTS idx_barcodes_user_id ON barcodes(user_id);
-CREATE INDEX IF NOT EXISTS idx_barcodes_barcode_value ON barcodes(barcode_value);
-CREATE INDEX IF NOT EXISTS idx_barcodes_scanned_at ON barcodes(scanned_at);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_products_shop_id ON products(shop_id);
 CREATE INDEX IF NOT EXISTS idx_shopping_carts_user_id ON shopping_carts(user_id);
@@ -152,7 +133,6 @@ ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shop_hourly_rates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE barcodes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_carts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
@@ -180,10 +160,6 @@ CREATE POLICY "用户只能查看自己的排班" ON work_schedules
 
 -- 3.4 店铺时薪表策略
 CREATE POLICY "用户只能查看自己的店铺时薪" ON shop_hourly_rates
-  FOR ALL USING (auth.uid() = user_id);
-
--- 3.5 条形码表策略
-CREATE POLICY "用户只能查看自己的条形码" ON barcodes
   FOR ALL USING (auth.uid() = user_id);
 
 -- 3.6 商品表策略
@@ -288,11 +264,6 @@ CREATE TRIGGER update_shop_hourly_rates_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_barcodes_updated_at 
-  BEFORE UPDATE ON barcodes 
-  FOR EACH ROW 
-  EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_products_updated_at 
   BEFORE UPDATE ON products 
   FOR EACH ROW 
@@ -340,7 +311,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE todos;
 ALTER PUBLICATION supabase_realtime ADD TABLE user_profiles;
 ALTER PUBLICATION supabase_realtime ADD TABLE work_schedules;
 ALTER PUBLICATION supabase_realtime ADD TABLE shop_hourly_rates;
-ALTER PUBLICATION supabase_realtime ADD TABLE barcodes;
 ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE shopping_carts;
 ALTER PUBLICATION supabase_realtime ADD TABLE cart_items;
