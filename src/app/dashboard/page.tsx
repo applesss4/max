@@ -55,16 +55,6 @@ export default function DashboardPage() {
         onClick: () => router.push('/work-schedule')
       },
       {
-        title: '今日天气',
-        description: '查看今日天气并切换城市',
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
-          </svg>
-        ),
-        onClick: () => router.push('/today-weather')
-      },
-      {
         title: '居家购物',
         description: '管理您的购物清单和预算',
         icon: (
