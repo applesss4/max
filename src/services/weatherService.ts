@@ -305,6 +305,9 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     // 发送请求
     const response = await axios.get<OpenWeatherResponse>(url);
     
+    console.log(`API响应状态: ${response.status}`);
+    console.log(`API响应头:`, response.headers);
+    
     // 检查响应状态
     if (response.status !== 200) {
       console.error('获取天气数据失败:', response.statusText);
@@ -312,6 +315,8 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     }
     
     const data = response.data;
+    
+    console.log(`API响应数据:`, data);
     
     // 检查API响应码
     if (data.cod !== 200) {
@@ -581,13 +586,18 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
     }
 
     // 构建API请求URL
-    const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
+    const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn&exclude=minutely`;
+    
+    console.log('构建的OneCall API URL:', url);
     
     console.log(`正在获取坐标 (${lat}, ${lon}) 的完整天气数据...`);
     console.log(`请求URL: ${url}`);
     
     // 发送请求
     const response = await axios.get<OneCallResponse>(url);
+    
+    console.log(`OneCall API响应状态: ${response.status}`);
+    console.log(`OneCall API响应头:`, response.headers);
     
     // 检查响应状态
     if (response.status !== 200) {
@@ -597,7 +607,12 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
     
     const data = response.data;
     
-    console.log(`成功获取坐标 (${lat}, ${lon}) 的完整天气数据`);
+    console.log(`成功获取坐标 (${lat}, ${lon}) 的完整天气数据`, data);
+    
+    // 验证数据结构
+    if (!data.current || !data.daily || !data.hourly) {
+      console.warn('OneCall API返回的数据结构不完整:', data);
+    }
     
     return data;
   } catch (error: any) {
