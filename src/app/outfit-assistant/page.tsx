@@ -116,8 +116,8 @@ export default function OutfitAssistantPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPreview, setSelectedPreview] = useState<OutfitPreview | null>(null)
   const [showWardrobeSelector, setShowWardrobeSelector] = useState(false)
-  const [networkImageUrl, setNetworkImageUrl] = useState<string>('') // 添加网络图片URL状态
-  
+  const [filteredCategory, setFilteredCategory] = useState<string | null>(null) // 添加筛选类别状态
+
   // 获取用户衣柜物品
   const fetchWardrobeItems = useCallback(async () => {
     console.log('開始获取用户衣柜物品...', { userId: user?.id });
@@ -252,10 +252,12 @@ export default function OutfitAssistantPage() {
             city: '千葉',
             country: 'JP',
             icon: '01d',
-            description: '晴'
+            description: '晴',
+            latitude: 35.6073,
+            longitude: 140.1065
           };
           setWeatherData(mockWeather);
-          alert('无法获取实时天气数据，将使用模拟数据');
+          alert('无法获取实时天气データ，将使用模拟データ');
         }
       }
     } catch (error) {
@@ -271,12 +273,124 @@ export default function OutfitAssistantPage() {
         city: '千葉',
         country: 'JP',
         icon: '01d',
-        description: '晴'
+        description: '晴',
+        latitude: 35.6073,
+        longitude: 140.1065
       };
       setWeatherData(mockWeather);
       alert('获取天气データ失败，将使用模拟データ');
     }
   }, []);
+
+  // 模拟天气データ（用于测试）
+  const mockWeatherData = {
+    temperature: 22,
+    condition: '晴朗',
+    humidity: 65,
+    windSpeed: 3.5,
+    pressure: 1013,
+    visibility: 10000,
+    city: '千葉',
+    country: 'JP',
+    icon: '01d',
+    description: '晴朗',
+    latitude: 35.6073,
+    longitude: 140.1065
+  };
+
+  // 模拟完整天气データ（用于テスト）
+  const mockFullWeatherData = {
+    lat: 35.6073,
+    lon: 140.1065,
+    timezone: 'Asia/Tokyo',
+    timezone_offset: 32400,
+    current: {
+      dt: Math.floor(Date.now() / 1000),
+      sunrise: Math.floor(Date.now() / 1000) - 3600,
+      sunset: Math.floor(Date.now() / 1000) + 3600,
+      temp: 22,
+      feels_like: 23,
+      pressure: 1013,
+      humidity: 65,
+      dew_point: 15,
+      uvi: 5,
+      clouds: 0,
+      visibility: 10000,
+      wind_speed: 3.5,
+      wind_deg: 180,
+      wind_gust: 5.1,
+      weather: [
+        {
+          id: 800,
+          main: 'Clear',
+          description: '晴朗',
+          icon: '01d'
+        }
+      ]
+    },
+    hourly: Array(48).fill(null).map((_, index) => ({
+      dt: Math.floor(Date.now() / 1000) + index * 3600,
+      temp: 22 + Math.sin(index / 4) * 5,
+      feels_like: 23 + Math.sin(index / 4) * 5,
+      pressure: 1013,
+      humidity: 65,
+      dew_point: 15,
+      uvi: Math.max(0, 5 - Math.abs(index - 12) / 3),
+      clouds: Math.floor(Math.random() * 100),
+      visibility: 10000,
+      wind_speed: 3.5,
+      wind_deg: 180,
+      wind_gust: 5.1,
+      weather: [
+        {
+          id: 800,
+          main: 'Clear',
+          description: '晴朗',
+          icon: index < 6 || index > 18 ? '01n' : '01d'
+        }
+      ],
+      pop: Math.random() * 0.3
+    })),
+    daily: Array(8).fill(null).map((_, index) => ({
+      dt: Math.floor(Date.now() / 1000) + index * 86400,
+      sunrise: Math.floor(Date.now() / 1000) - 3600 + index * 86400,
+      sunset: Math.floor(Date.now() / 1000) + 3600 + index * 86400,
+      moonrise: 0,
+      moonset: 0,
+      moon_phase: 0.5,
+      temp: {
+        day: 22 + Math.sin(index) * 8,
+        min: 18 + Math.sin(index) * 5,
+        max: 25 + Math.sin(index) * 10,
+        night: 20 + Math.sin(index) * 6,
+        eve: 21 + Math.sin(index) * 7,
+        morn: 19 + Math.sin(index) * 5
+      },
+      feels_like: {
+        day: 23 + Math.sin(index) * 8,
+        night: 21 + Math.sin(index) * 6,
+        eve: 22 + Math.sin(index) * 7,
+        morn: 20 + Math.sin(index) * 5
+      },
+      pressure: 1013,
+      humidity: 65,
+      dew_point: 15,
+      wind_speed: 3.5,
+      wind_deg: 180,
+      wind_gust: 5.1,
+      weather: [
+        {
+          id: 800,
+          main: 'Clear',
+          description: index === 0 ? '今日天气晴朗' : `第${index + 1}天天气晴朗`,
+          icon: '01d'
+        }
+      ],
+      clouds: Math.floor(Math.random() * 100),
+      pop: Math.random() * 0.3,
+      uvi: 5
+    }))
+  };
 
   // 生成穿搭推荐
   const generateOutfitRecommendation = useCallback(async () => {
@@ -469,28 +583,14 @@ export default function OutfitAssistantPage() {
     }
   };
 
-  // 添加网络推荐图
-  const addNetworkRecommendationImage = () => {
-    if (!networkImageUrl) {
-      alert('请输入网络图片URL');
-      return;
-    }
+  // 根据分类筛选衣柜物品
+  const filterWardrobeByCategory = (category: string) => {
+    setFilteredCategory(category);
+    setActiveTab('wardrobe');
+    console.log(`筛选 ${category} 类别的衣物`);
+  };
 
-    // 验证URL格式
-    try {
-      new URL(networkImageUrl);
-      // 更新推荐状态，添加网络图片URL
-      if (recommendation) {
-        setRecommendation({
-          ...recommendation,
-          networkImageUrl: networkImageUrl
-        });
-      }
-      alert('网络推荐图已添加!');
-    } catch (e) {
-      alert('请输入有效的URL地址');
-    }
-  }
+
 
   // 打开编辑模态框
   const openEditModal = (item: WardrobeItem) => {
@@ -930,6 +1030,8 @@ export default function OutfitAssistantPage() {
     })()
   };
   
+
+
   const tagDistribution = (() => {
     const tagCounts: Record<string, number> = {};
     
@@ -1009,56 +1111,7 @@ export default function OutfitAssistantPage() {
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
                 <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日穿搭推荐</h2>
                 
-                {/* 网络推荐图添加区域 */}
-                <div className="bg-cream-bg rounded-lg p-4 mb-6 border border-cream-border">
-                  <h3 className="font-medium text-cream-text-dark mb-2">添加网络推荐搭配图</h3>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={networkImageUrl}
-                      onChange={(e) => setNetworkImageUrl(e.target.value)}
-                      placeholder="请输入网络图片URL"
-                      className="flex-1 px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                    />
-                    <button
-                      onClick={addNetworkRecommendationImage}
-                      className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
-                    >
-                      添加
-                    </button>
-                  </div>
-                </div>
-                
-                {/* 网络推荐图展示区域 */}
-                {recommendation?.networkImageUrl && (
-                  <div className="bg-cream-bg rounded-lg p-4 mb-6 border border-cream-border">
-                    <h3 className="font-medium text-cream-text-dark mb-2">网络推荐搭配图</h3>
-                    <div className="flex justify-center">
-                      <img 
-                        src={recommendation.networkImageUrl} 
-                        alt="网络推荐搭配" 
-                        className="max-w-full h-auto rounded-lg shadow-md"
-                        style={{ maxHeight: '300px' }}
-                      />
-                    </div>
-                    <div className="mt-2 text-center">
-                      <button
-                        onClick={() => {
-                          if (recommendation) {
-                            setRecommendation({
-                              ...recommendation,
-                              networkImageUrl: undefined
-                            });
-                            setNetworkImageUrl('');
-                          }
-                        }}
-                        className="text-cream-text-light hover:text-cream-accent text-sm"
-                      >
-                        移除网络推荐图
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* 已删除网络推荐图功能 */}
                 
                 <div className="bg-cream-bg rounded-lg p-4 mb-6">
                   <h3 className="font-medium text-cream-text-dark mb-2">今日天气</h3>
@@ -1320,7 +1373,7 @@ export default function OutfitAssistantPage() {
                   <h3 className="text-lg font-semibold text-cream-text-dark mb-4">类别分布</h3>
                   <div className="space-y-2">
                     {Object.entries(wardrobeStats.categoryCounts).map(([category, count]) => (
-                      <div key={category} className="flex justify-between">
+                      <div key={category} className="flex justify-between cursor-pointer hover:bg-cream-bg p-2 rounded" onClick={() => filterWardrobeByCategory(category)}>
                         <span className="text-cream-text">{category}</span>
                         <span className="text-cream-text-dark font-medium">{count}</span>
                       </div>
@@ -1343,7 +1396,20 @@ export default function OutfitAssistantPage() {
               
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-cream-text-dark">我的衣柜</h2>
+                  <div>
+                    <h2 className="text-xl font-semibold text-cream-text-dark">我的衣柜</h2>
+                    {filteredCategory && (
+                      <p className="text-cream-text-light text-sm mt-1">
+                        当前筛选: {filteredCategory} 
+                        <button 
+                          onClick={() => setFilteredCategory(null)}
+                          className="text-cream-accent hover:text-cream-accent-hover ml-2"
+                        >
+                          清除筛选
+                        </button>
+                      </p>
+                    )}
+                  </div>
                   <button 
                     className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     onClick={() => setShowAddModal(true)}
@@ -1361,7 +1427,7 @@ export default function OutfitAssistantPage() {
                   </div>
                 ) : wardrobeItems.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {wardrobeItems.map((item) => (
+                    {(filteredCategory ? wardrobeItems.filter(item => item.category === filteredCategory) : wardrobeItems).map((item) => (
                       <div key={item.id} className="bg-cream-bg rounded-lg p-4 border border-cream-border relative">
                         <div className="absolute top-2 right-2 flex space-x-1">
                           <button 

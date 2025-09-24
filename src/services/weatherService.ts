@@ -12,6 +12,8 @@ export interface WeatherData {
   country: string;     // 国家
   icon: string;        // 天气图标
   description: string; // 天气描述
+  latitude: number;    // 纬度
+  longitude: number;   // 经度
 }
 
 // 检查环境变量并提供更详细的错误信息
@@ -356,7 +358,9 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
       city: data.name,
       country: data.sys.country,
       icon: data.weather[0].icon,
-      description: data.weather[0].description
+      description: data.weather[0].description,
+      latitude: data.coord.lat,
+      longitude: data.coord.lon
     };
     
     console.log(`成功获取城市 "${city}" 的天气数据:`, weatherData);
@@ -431,7 +435,9 @@ export const getWeatherByCoordinates = async (lat: number, lon: number): Promise
       city: data.name,
       country: data.sys.country,
       icon: data.weather[0].icon,
-      description: data.weather[0].description
+      description: data.weather[0].description,
+      latitude: data.coord.lat,
+      longitude: data.coord.lon
     };
     
     console.log(`成功获取坐标 (${lat}, ${lon}) 的天气数据:`, weatherData);
