@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/supabase'
 
 // Supabase配置 - 添加默认值以防止undefined
@@ -9,7 +9,7 @@ console.log('Supabase URL:', supabaseUrl)
 console.log('Supabase Anon Key exists:', !!supabaseAnonKey)
 
 // 创建Supabase客户端
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase: SupabaseClient<Database> = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // 创建服务端Supabase客户端（用于服务器组件）
 export const createServerSupabaseClient = () => {
