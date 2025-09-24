@@ -266,6 +266,7 @@ export interface Database {
           category: string
           color: string | null
           season: string | null
+          tags: string[] | null
           image_url: string | null
           purchase_date: string | null
           brand: string | null
@@ -280,6 +281,7 @@ export interface Database {
           category: string
           color?: string | null
           season?: string | null
+          tags?: string[] | null
           image_url?: string | null
           purchase_date?: string | null
           brand?: string | null
@@ -294,6 +296,7 @@ export interface Database {
           category?: string
           color?: string | null
           season?: string | null
+          tags?: string[] | null
           image_url?: string | null
           purchase_date?: string | null
           brand?: string | null

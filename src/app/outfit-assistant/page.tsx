@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { addWardrobeItem, updateWardrobeItem, deleteWardrobeItem, saveOutfitHistory, getOutfitHistory } from '@/services/outfitService'
+import { addWardrobeItem, updateWardrobeItem, deleteWardrobeItem, saveOutfitHistory, getOutfitHistory, generateOptimizedOutfitRecommendation } from '@/services/outfitService'
 import { getWeatherByCity, getWeatherByCoordinates, getOneCallWeather, OneCallResponse, WeatherData as WeatherApiData } from '@/services/weatherService'
 
 // 定义类型
@@ -16,6 +16,7 @@ interface WardrobeItem {
   category: string
   color: string | null
   season: string | null
+  tags: string[] | null
   image_url: string | null
   purchase_date: string | null
   brand: string | null
@@ -43,7 +44,7 @@ interface OutfitHistoryItem {
 }
 
 // 定义标签类型
-type Tag = '商务' | '休闲' | '运动' | '正式' | '日常' | '约会' | '度假' | '居家';
+type Tag = '商务' | '休闲' | '運動' | '正式' | '日常' | '约会' | '度假' | '居家';
 
 // 定义穿搭预览类型
 interface OutfitPreview {
@@ -69,17 +70,17 @@ export default function OutfitAssistantPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
-  const [editingItem, setEditingItem] = useState<(WardrobeItem & { tags: Tag[] }) | null>(null)
+  const [editingItem, setEditingItem] = useState<(WardrobeItem & { tags: string[] }) | null>(null)
   const [newItem, setNewItem] = useState({
     name: '',
     category: '',
     color: '',
     season: '',
+    tags: [] as string[],
     image_url: '',
     purchase_date: '',
     brand: '',
-    notes: '',
-    tags: [] as Tag[]
+    notes: ''
   })
   const [outfitPreviews, setOutfitPreviews] = useState<OutfitPreview[]>([])
   const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -102,6 +103,7 @@ export default function OutfitAssistantPage() {
       setWardrobeItems(data || [])
     } catch (error) {
       console.error('获取衣柜物品失败:', error)
+      alert('获取衣柜物品失败，请稍后重试')
     } finally {
       setLoadingWardrobe(false)
     }
@@ -120,6 +122,7 @@ export default function OutfitAssistantPage() {
       }
     } catch (error) {
       console.error('获取穿搭历史失败:', error)
+      alert('获取穿搭历史失败，请稍后重试')
     } finally {
       setLoadingHistory(false)
     }
@@ -128,58 +131,58 @@ export default function OutfitAssistantPage() {
   // 获取天气数据（真实的API调用）
   const fetchWeatherData = useCallback(async () => {
     try {
-      // 获取日本千叶的天气数据
-      console.log('開始获取日本千葉天气数据...');
+      // 获取日本千葉の天气データ
+      console.log('開始获取日本千葉天气データ...');
       // 方法1: 使用城市名获取天气
       const weather = await getWeatherByCity('Chiba');
       
-      console.log('城市天气数据获取结果:', weather);
+      console.log('城市天气データ获取結果:', weather);
       
       if (weather) {
-        console.log('成功获取千葉天气数据:', weather);
+        console.log('成功获取千葉天气データ:', weather);
         setWeatherData(weather);
         
-        // 获取完整的天气预报数据
+        // 获取完整的天气预报データ
         try {
-          // 使用千葉の经纬度获取完整天气数据
+          // 使用千葉の经纬度获取完整天气データ
           // 千葉の经纬度大约为: 纬度35.6073, 经度140.1065
           const fullWeather = await getOneCallWeather(35.6073, 140.1065);
-          console.log('完整天气数据获取结果:', fullWeather);
+          console.log('完整天气データ获取結果:', fullWeather);
           if (fullWeather) {
-            console.log('成功获取千葉完整天气数据:', fullWeather);
+            console.log('成功获取千葉完整天气データ:', fullWeather);
             setFullWeatherData(fullWeather);
           } else {
-            console.warn('无法获取千葉完整天气数据');
+            console.warn('无法获取千葉完整天气データ');
           }
         } catch (error) {
-          console.error('获取千葉完整天气数据失败:', error);
+          console.error('获取千葉完整天气データ失败:', error);
         }
       } else {
-        console.warn('无法获取千葉天气数据，尝试使用经纬度获取...');
+        console.warn('无法获取千葉天气データ，尝试使用经纬度获取...');
         // 方法2: 如果城市名获取失败，使用经纬度获取
         // 日本千葉の经纬度大约为: 纬度35.6073, 经度140.1065
         const weatherByCoords = await getWeatherByCoordinates(35.6073, 140.1065);
-        console.log('经纬度天气数据获取结果:', weatherByCoords);
+        console.log('经纬度天气データ获取結果:', weatherByCoords);
         if (weatherByCoords) {
-          console.log('通过经纬度成功获取千葉天气数据:', weatherByCoords);
+          console.log('通过经纬度成功获取千葉天气データ:', weatherByCoords);
           setWeatherData(weatherByCoords);
           
-          // 获取完整的天气预报数据
+          // 获取完整的天气预报データ
           try {
             const fullWeather = await getOneCallWeather(35.6073, 140.1065);
-            console.log('完整天气数据获取结果(经纬度):', fullWeather);
+            console.log('完整天气データ获取結果(经纬度):', fullWeather);
             if (fullWeather) {
-              console.log('成功获取千葉完整天气数据:', fullWeather);
+              console.log('成功获取千葉完整天气データ:', fullWeather);
               setFullWeatherData(fullWeather);
             } else {
-              console.warn('无法获取千葉完整天气数据');
+              console.warn('无法获取千葉完整天气データ');
             }
           } catch (error) {
-            console.error('获取千葉完整天气数据失败:', error);
+            console.error('获取千葉完整天气データ失败:', error);
           }
         } else {
-          console.warn('无法通过经纬度获取千葉天气数据，使用模拟数据');
-          // 如果API调用失败，使用模拟数据
+          console.warn('无法通过经纬度获取千葉天气データ，使用模拟データ');
+          // 如果API调用失败，使用模拟データ
           const mockWeather: WeatherApiData = {
             temperature: 22,
             condition: '晴',
@@ -193,11 +196,12 @@ export default function OutfitAssistantPage() {
             description: '晴'
           };
           setWeatherData(mockWeather);
+          alert('无法获取实时天气数据，将使用模拟数据');
         }
       }
     } catch (error) {
-      console.error('获取千葉天气数据失败:', error);
-      // 如果API调用失败，使用模拟数据
+      console.error('获取千葉天气データ失败:', error);
+      // 如果API调用失败，使用模拟データ
       const mockWeather: WeatherApiData = {
         temperature: 22,
         condition: '晴',
@@ -211,6 +215,7 @@ export default function OutfitAssistantPage() {
         description: '晴'
       };
       setWeatherData(mockWeather);
+      alert('获取天气データ失败，将使用模拟データ');
     }
   }, [])
 
@@ -220,224 +225,75 @@ export default function OutfitAssistantPage() {
 
     setLoadingRecommendation(true)
     try {
-      // 根据千葉の气候特点和天气数据推荐合适的衣物
-      let recommendedItems: WardrobeItem[] = []
+      // 使用优化的推荐逻辑
+      const result = generateOptimizedOutfitRecommendation(
+        {
+          temperature: weatherData.temperature,
+          condition: weatherData.condition
+        },
+        wardrobeItems
+      );
       
-      // 根据温度推荐（考虑日本の季节特点）
-      if (weatherData.temperature > 28) {
-        // 夏季炎热潮湿：推荐轻薄透气の衣物
-        recommendedItems = wardrobeItems.filter(item => 
-          item.category === '上衣' && (item.season === '夏' || item.season === '四季') && 
-          (item.notes?.includes('轻薄') || item.notes?.includes('透气') || item.notes?.includes('棉质'))
-        ).slice(0, 1)
-        
-        const pants = wardrobeItems.filter(item => 
-          item.category === '裤子' && (item.season === '夏' || item.season === '四季') &&
-          (item.notes?.includes('轻薄') || item.notes?.includes('透气') || item.notes?.includes('短裤'))
-        ).slice(0, 1)
-        
-        recommendedItems = [...recommendedItems, ...pants]
-      } else if (weatherData.temperature > 20) {
-        // 春秋季温和：推荐舒适适中の衣物
-        recommendedItems = wardrobeItems.filter(item => 
-          item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-        ).slice(0, 1)
-        
-        const pants = wardrobeItems.filter(item => 
-          item.category === '裤子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-        ).slice(0, 1)
-        
-        recommendedItems = [...recommendedItems, ...pants]
-      } else if (weatherData.temperature > 10) {
-        // 早春晚秋凉爽：推荐稍厚一些の衣物
-        const outer = wardrobeItems.filter(item => 
-          item.category === '外套' && (item.season === '春' || item.season === '秋' || item.season === '四季') &&
-          (item.notes?.includes('薄外套') || item.notes?.includes('开衫') || item.notes?.includes('风衣'))
-        ).slice(0, 1)
-        
-        const inner = wardrobeItems.filter(item => 
-          item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-        ).slice(0, 1)
-        
-        const pants = wardrobeItems.filter(item => 
-          item.category === '裤子' && (item.season === '春' || item.season === '秋' || item.season === '四季')
-        ).slice(0, 1)
-        
-        recommendedItems = [...outer, ...inner, ...pants]
-      } else {
-        // 冬季寒冷：推荐保暖衣物
-        const outer = wardrobeItems.filter(item => 
-          item.category === '外套' && (item.season === '冬' || item.season === '四季') &&
-          (item.notes?.includes('厚外套') || item.notes?.includes('羽绒服') || item.notes?.includes('大衣'))
-        ).slice(0, 1)
-        
-        const inner = wardrobeItems.filter(item => 
-          item.category === '上衣' && (item.season === '冬' || item.season === '四季') &&
-          (item.notes?.includes('毛衣') || item.notes?.includes('保暖') || item.notes?.includes('厚'))
-        ).slice(0, 1)
-        
-        const pants = wardrobeItems.filter(item => 
-          item.category === '裤子' && (item.season === '冬' || item.season === '四季') &&
-          (item.notes?.includes('厚') || item.notes?.includes('保暖') || item.notes?.includes('加绒'))
-        ).slice(0, 1)
-        
-        recommendedItems = [...outer, ...inner, ...pants]
-      }
-      
-      // 根据天气状况添加配饰
-      if (weatherData.condition.includes('雨') || weatherData.condition.includes('Rain')) {
-        // 下雨天推荐雨具
-        const rainItems = wardrobeItems.filter(item => 
-          item.category === '配飾' && 
-          (item.notes?.includes('雨伞') || item.notes?.includes('雨衣') || item.notes?.includes('防水'))
-        ).slice(0, 2)
-        
-        recommendedItems = [...recommendedItems, ...rainItems]
-      } else if (weatherData.humidity > 70) {
-        // 高湿度天气推荐透气配饰
-        const accessories = wardrobeItems.filter(item => 
-          item.category === '配飾' && 
-          (item.notes?.includes('透气') || item.notes?.includes('吸汗') || item.notes?.includes('棉质'))
-        ).slice(0, 2)
-        
-        recommendedItems = [...recommendedItems, ...accessories]
-      } else {
-        // 普通天气推荐一般配饰
-        const accessories = wardrobeItems.filter(item => 
-          item.category === '配飾'
-        ).slice(0, 2)
-        
-        recommendedItems = [...recommendedItems, ...accessories]
-      }
-      
-      // 生成推荐说明（针对千叶气候特点）
-      let weatherDescription = '';
-      if (weatherData.temperature > 28) {
-        weatherDescription = '炎热潮湿的夏日';
-      } else if (weatherData.temperature > 20) {
-        weatherDescription = '温暖舒适的春/秋季';
-      } else if (weatherData.temperature > 10) {
-        weatherDescription = '凉爽的早春/晚秋';
-      } else {
-        weatherDescription = '寒冷的冬季';
-      }
-      
-      // 添加湿度信息
-      let humidityDescription = '';
-      if (weatherData.humidity > 80) {
-        humidityDescription = '，湿度较高，建议选择透气性好的衣物';
-      } else if (weatherData.humidity > 60) {
-        humidityDescription = '，湿度适中';
-      } else {
-        humidityDescription = '，湿度较低';
-      }
-      
-      const notes = `根据千叶${weatherDescription}${humidityDescription}，当前气温${weatherData.temperature}°C，为您推荐这套适合的穿搭。`;
+      setRecommendation(result);
+    } catch (error) {
+      console.error('生成穿搭推薦失敗:', error)
+      // 出错时提供默认推荐
+      const defaultItems = wardrobeItems.slice(0, 3);
+      const notes = `根据当前天气情况，为您推荐这套基础穿搭搭配。`;
       
       setRecommendation({
-        items: recommendedItems,
+        items: defaultItems,
         notes
       })
-    } catch (error) {
-      console.error('生成穿搭推荐失败:', error)
     } finally {
       setLoadingRecommendation(false)
     }
   }, [weatherData, wardrobeItems])
-
-  // 衣装追加
-  const handleAddWardrobeItem = async () => {
-    if (!user || !newItem.name || !newItem.category) return
-
-    try {
-      const itemToAdd = {
-        ...newItem,
-        user_id: user.id,
-        notes: newItem.tags.join(', ') // タグをnotesフィールドに保存
-      }
-
-      // @ts-ignore
-      const { data, error } = await addWardrobeItem(itemToAdd)
-
-      if (error) throw error
-      if (data) {
-        // ローカル状態を更新
-        setWardrobeItems(prev => [data, ...prev])
-        setShowAddModal(false)
-        // フォームをリセット
-        setNewItem({
-          name: '',
-          category: '',
-          color: '',
-          season: '',
-          image_url: '',
-          purchase_date: '',
-          brand: '',
-          notes: '',
-          tags: []
-        })
-      }
-    } catch (error) {
-      console.error('衣装追加失敗:', error)
-      alert('衣装の追加に失敗しました。もう一度試してください')
+  // 保存穿搭预览
+  const saveOutfitPreview = () => {
+    if (selectedPreview) {
+      // 将搭配添加到预览列表
+      setOutfitPreviews(prev => {
+        // 检查是否已存在于列表中
+        const exists = prev.some(preview => preview.id === selectedPreview.id);
+        if (exists) {
+          // 如果已存在，更新它
+          return prev.map(preview => preview.id === selectedPreview.id ? selectedPreview : preview);
+        } else {
+          // 如果不存在，添加到列表开头
+          return [selectedPreview, ...prev];
+        }
+      });
+      alert(`穿搭预览 "${selectedPreview.name}" 已保存!`);
+      setShowPreviewModal(false);
     }
-  }
+  };
 
-  // 衣装編集
-  const handleEditWardrobeItem = async () => {
-    if (!editingItem || !editingItem.name || !editingItem.category) return
-
-    try {
-      const itemToUpdate = {
-        ...editingItem,
-        notes: editingItem.tags.join(', ') // タグをnotesフィールドに保存
-      }
-
-      // @ts-ignore
-      const { data, error } = await updateWardrobeItem(editingItem.id, itemToUpdate)
-
-      if (error) throw error
-      if (data) {
-        // ローカル状态を更新
-        // @ts-ignore
-        setWardrobeItems(prev => 
-          // @ts-ignore
-          prev.map(item => item.id === data.id ? data : item)
-        )
-        setShowEditModal(false)
-        setEditingItem(null)
-      }
-    } catch (error) {
-      console.error('衣装編集失敗:', error)
-      alert('衣装の編集に失敗しました。もう一度試してください')
-    }
-  }
-
-  // 衣装削除
-  const handleDeleteWardrobeItem = async () => {
-    if (!itemToDelete) return
-
-    try {
-      // @ts-ignore
-      const { error } = await deleteWardrobeItem(itemToDelete)
-
-      if (error) throw error
+  // 保存当前推荐为穿搭预览
+  const saveCurrentRecommendationAsPreview = () => {
+    if (recommendation && recommendation.items.length > 0) {
+      const newPreview: OutfitPreview = {
+        id: Date.now().toString(),
+        name: `今日推荐 ${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
+        items: recommendation.items,
+        createdAt: new Date().toISOString()
+      };
       
-      // ローカル状态を更新
-      setWardrobeItems(prev => 
-        prev.filter(item => item.id !== itemToDelete)
-      )
-      setShowDeleteConfirm(false)
-      setItemToDelete(null)
-    } catch (error) {
-      console.error('衣装削除失敗:', error)
-      alert('衣装の削除に失敗しました。もう一度試してください')
+      setOutfitPreviews(prev => [newPreview, ...prev]);
+      setSelectedPreview(newPreview);
+      setShowPreviewModal(true);
+      alert('推荐搭配已保存为预览!');
+    } else {
+      alert('当前没有推荐搭配可保存!');
     }
-  }
+  };
 
   // 衣装履歴保存
   const handleSaveOutfit = async () => {
-    if (!user || !recommendation) return
+    if (!user || !recommendation) {
+      alert('没有推荐搭配可保存');
+      return;
+    }
 
     try {
       const outfitToSave = {
@@ -445,23 +301,56 @@ export default function OutfitAssistantPage() {
         items: JSON.stringify(recommendation.items),
         weather: JSON.stringify(weatherData),
         notes: recommendation.notes
-      }
+      };
 
       // @ts-ignore
-      const { data, error } = await saveOutfitHistory(outfitToSave)
+      const { data, error } = await saveOutfitHistory(outfitToSave);
 
-      if (error) throw error
+      if (error) throw error;
       
       if (data) {
-        alert('衣装が履歴に保存されました')
+        alert('衣装が履歴に保存されました');
       }
     } catch (error) {
-      console.error('衣装履歴保存失敗:', error)
-      alert('衣装履歴の保存に失敗しました。もう一度試してください')
+      console.error('衣装履歴保存失敗:', error);
+      alert('衣装履歴の保存に失敗しました。もう一度試してください');
     }
-  }
+  };
 
-  // 衣装統计情報計算
+  // 打开编辑模态框
+  const openEditModal = (item: WardrobeItem) => {
+    setEditingItem(item as WardrobeItem & { tags: string[] });
+    setShowEditModal(true);
+  };
+
+  // 打开删除确认框
+  const openDeleteConfirm = (itemId: string) => {
+    setItemToDelete(itemId);
+    setShowDeleteConfirm(true);
+  };
+
+  // 从历史记录创建穿搭预览
+  const createPreviewFromHistory = (historyItem: OutfitHistoryItem) => {
+    try {
+      const items = JSON.parse(historyItem.items);
+      const newPreview: OutfitPreview = {
+        id: Date.now().toString(),
+        name: `历史搭配 ${new Date(historyItem.outfit_date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
+        items: items,
+        createdAt: historyItem.created_at
+      };
+      
+      setOutfitPreviews(prev => [newPreview, ...prev]);
+      setSelectedPreview(newPreview);
+      setShowPreviewModal(true);
+      alert('历史搭配已添加到预览!');
+    } catch (error) {
+      console.error('解析历史记录失败:', error);
+      alert('解析历史记录失败');
+    }
+  };
+
+  // 衣装统计信息计算
   const getWardrobeStats = () => {
     const totalItems = wardrobeItems.length;
     const categoryCounts: Record<string, number> = {};
@@ -473,13 +362,13 @@ export default function OutfitAssistantPage() {
     return { totalItems, categoryCounts };
   };
 
-  // タグ分布取得
+  // 标签分布获取
   const getTagDistribution = () => {
     const tagCounts: Record<string, number> = {};
     
     wardrobeItems.forEach(item => {
-      // 假定各itemにはtags属性があり、ここでは実際のデータ構造に合わせて調整が必要
-      const tags = item.notes?.split(',') || []; // 一時的にnotesフィールドにタグを保存
+      // 使用tags字段
+      const tags = item.tags || [];
       tags.forEach(tag => {
         const trimmedTag = tag.trim();
         if (trimmedTag) {
@@ -496,83 +385,6 @@ export default function OutfitAssistantPage() {
     
     return tagArray;
   };
-
-  // 创建新的穿搭预览
-  const createOutfitPreview = (items: WardrobeItem[]) => {
-    const newPreview: OutfitPreview = {
-      id: Date.now().toString(),
-      name: `搭配 ${outfitPreviews.length + 1}`,
-      items,
-      createdAt: new Date().toISOString()
-    };
-    
-    setOutfitPreviews(prev => [newPreview, ...prev]);
-    return newPreview;
-  };
-
-  // 保存当前推荐为穿搭预览
-  const saveCurrentRecommendationAsPreview = () => {
-    if (recommendation) {
-      const newPreview = createOutfitPreview(recommendation.items);
-      setSelectedPreview(newPreview);
-      setShowPreviewModal(true);
-    }
-  };
-
-  // 从历史记录创建穿搭预览
-  const createPreviewFromHistory = (historyItem: OutfitHistoryItem) => {
-    try {
-      const items = JSON.parse(historyItem.items);
-      const newPreview = createOutfitPreview(items);
-      setSelectedPreview(newPreview);
-      setShowPreviewModal(true);
-    } catch (error) {
-      console.error('解析历史记录失败:', error);
-    }
-  };
-
-  // 保存穿搭预览
-  const saveOutfitPreview = () => {
-    if (selectedPreview) {
-      // 这里可以实现保存到数据库的逻辑
-      alert(`穿搭预览 "${selectedPreview.name}" 已保存!`);
-      setShowPreviewModal(false);
-    }
-  };
-
-  // 从衣柜添加物品到搭配预览
-  const addItemsToPreview = (items: WardrobeItem[]) => {
-    if (selectedPreview) {
-      // 过滤掉已经存在于搭配中的物品
-      const newItems = items.filter(
-        newItem => !selectedPreview.items.some(existingItem => existingItem.id === newItem.id)
-      );
-      
-      setSelectedPreview(prev => prev ? {
-        ...prev,
-        items: [...prev.items, ...newItems]
-      } : null);
-      
-      setShowWardrobeSelector(false);
-    }
-  };
-
-  // 打开编辑模态框
-  const openEditModal = (item: WardrobeItem) => {
-    // 为现有物品添加标签属性
-    const itemWithTags = {
-      ...item,
-      tags: (item.notes?.split(',').map(tag => tag.trim()) || []) as Tag[]
-    };
-    setEditingItem(itemWithTags as WardrobeItem & { tags: Tag[] });
-    setShowEditModal(true);
-  }
-
-  // 打开删除确认框
-  const openDeleteConfirm = (itemId: string) => {
-    setItemToDelete(itemId)
-    setShowDeleteConfirm(true)
-  }
 
   // 处理表单输入变化（添加）
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -609,16 +421,165 @@ export default function OutfitAssistantPage() {
   };
 
   // 处理标签变化（编辑）
-  const handleEditTagChange = (tag: Tag) => {
+  const handleEditTagChange = (tag: string) => {
     if (editingItem) {
-      const newTags = editingItem.tags.includes(tag) 
-        ? editingItem.tags.filter(t => t !== tag) 
-        : [...editingItem.tags, tag];
-      
       setEditingItem(prev => prev ? {
         ...prev,
-        tags: newTags
+        tags: prev.tags.includes(tag) 
+          ? prev.tags.filter(t => t !== tag) 
+          : [...prev.tags, tag]
       } : null);
+    }
+  };
+
+  // 衣装追加
+  const handleAddWardrobeItem = async () => {
+    if (!user || !newItem.name || !newItem.category) {
+      alert('请填写必要的信息（名称和类别）');
+      return;
+    }
+
+    try {
+      const itemToAdd = {
+        ...newItem,
+        user_id: user.id
+      }
+
+      // @ts-ignore
+      const { data, error } = await addWardrobeItem(itemToAdd)
+
+      if (error) throw error
+      if (data) {
+        // ローカル状態を更新
+        setWardrobeItems(prev => [data, ...prev])
+        setShowAddModal(false)
+        // フォームをリセット
+        setNewItem({
+          name: '',
+          category: '',
+          color: '',
+          season: '',
+          image_url: '',
+          purchase_date: '',
+          brand: '',
+          notes: '',
+          tags: []
+        })
+        alert('衣物添加成功！');
+      }
+    } catch (error) {
+      console.error('衣装追加失敗:', error)
+      alert('衣装の追加に失敗しました。もう一度試してください')
+    }
+  }
+
+  // 衣装編集
+  const handleEditWardrobeItem = async () => {
+    if (!editingItem || !editingItem.name || !editingItem.category) {
+      alert('请填写必要的信息（名称和类别）');
+      return;
+    }
+
+    try {
+      // @ts-ignore
+      const { data, error } = await updateWardrobeItem(editingItem.id, editingItem)
+
+      if (error) throw error
+      if (data) {
+        // ローカル状态を更新
+        // @ts-ignore
+        setWardrobeItems(prev => 
+          // @ts-ignore
+          prev.map(item => item.id === data.id ? data : item)
+        )
+        setShowEditModal(false)
+        setEditingItem(null)
+        alert('衣物编辑成功！');
+      }
+    } catch (error) {
+      console.error('衣装編集失敗:', error)
+      alert('衣装の編集に失敗しました。もう一度試してください')
+    }
+  }
+
+  // 衣装削除
+  const handleDeleteWardrobeItem = async () => {
+    if (!itemToDelete) {
+      alert('请选择要删除的衣物');
+      return;
+    }
+
+    try {
+      // @ts-ignore
+      const { error } = await deleteWardrobeItem(itemToDelete)
+
+      if (error) throw error
+      
+      // ローカル状态を更新
+      setWardrobeItems(prev => 
+        prev.filter(item => item.id !== itemToDelete)
+      )
+      setShowDeleteConfirm(false)
+      setItemToDelete(null)
+      alert('衣物删除成功！');
+    } catch (error) {
+      console.error('衣装削除失敗:', error)
+      alert('衣装の削除に失敗しました。もう一度試してください')
+    }
+  }
+
+  // 从衣柜选择器保存搭配
+  const saveOutfitFromWardrobeSelector = () => {
+    if (selectedPreview) {
+      // 将新搭配添加到预览列表
+      setOutfitPreviews(prev => {
+        // 检查是否已存在于列表中
+        const exists = prev.some(preview => preview.id === selectedPreview.id);
+        if (exists) {
+          // 如果已存在，更新它
+          return prev.map(preview => preview.id === selectedPreview.id ? selectedPreview : preview);
+        } else {
+          // 如果不存在，添加到列表开头
+          return [selectedPreview, ...prev];
+        }
+      });
+      setShowWardrobeSelector(false);
+      alert(`搭配 "${selectedPreview.name}" 已保存!`);
+    }
+  };
+
+  // 从衣柜创建新的搭配预览
+  const createNewPreviewFromWardrobe = () => {
+    const newPreview: OutfitPreview = {
+      id: Date.now().toString(),
+      name: `搭配 ${outfitPreviews.length + 1}`,
+      items: [],
+      createdAt: new Date().toISOString()
+    };
+    
+    setSelectedPreview(newPreview);
+    // 不再立即添加到预览列表中，而是等到用户明确保存时再添加
+    setShowWardrobeSelector(true);
+  };
+
+  // 处理衣柜选择器中的物品选择
+  const handleWardrobeItemSelect = (item: WardrobeItem) => {
+    if (selectedPreview) {
+      // 检查是否已选择该物品
+      const isItemSelected = selectedPreview.items.some(i => i.id === item.id);
+      if (isItemSelected) {
+        // 如果已选择，则移除
+        setSelectedPreview(prev => prev ? {
+          ...prev,
+          items: prev.items.filter(i => i.id !== item.id)
+        } : null);
+      } else {
+        // 如果未选择，则添加
+        setSelectedPreview(prev => prev ? {
+          ...prev,
+          items: [...prev.items, item]
+        } : null);
+      }
     }
   };
 
@@ -698,8 +659,39 @@ export default function OutfitAssistantPage() {
   }
 
   // 计算衣柜统计信息
-  const wardrobeStats = getWardrobeStats();
-  const tagDistribution = getTagDistribution();
+  const wardrobeStats = {
+    totalItems: wardrobeItems.length,
+    categoryCounts: (() => {
+      const categoryCounts: Record<string, number> = {};
+      wardrobeItems.forEach(item => {
+        categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+      });
+      return categoryCounts;
+    })()
+  };
+  
+  const tagDistribution = (() => {
+    const tagCounts: Record<string, number> = {};
+    
+    wardrobeItems.forEach(item => {
+      // 使用tags字段
+      const tags = item.tags || [];
+      tags.forEach(tag => {
+        const trimmedTag = tag.trim();
+        if (trimmedTag) {
+          tagCounts[trimmedTag] = (tagCounts[trimmedTag] || 0) + 1;
+        }
+      });
+    });
+    
+    // 转换为数组并排序
+    const tagArray = Object.entries(tagCounts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // 只取前5个标签
+    
+    return tagArray;
+  })();
 
   return (
     <ProtectedRoute>
@@ -814,8 +806,44 @@ export default function OutfitAssistantPage() {
                       </div>
                     </div>
                     
-                    {/* 一周天气预报 */}
+                    {/* 24小时预报 */}
                     <div className="mb-4">
+                      <h4 className="font-medium text-cream-text-dark mb-2">24小时预报</h4>
+                      <div className="flex overflow-x-auto pb-2 space-x-2">
+                        {fullWeatherData.hourly && fullWeatherData.hourly.length > 0 ? (
+                          fullWeatherData.hourly.slice(0, 24).map((hour, index) => {
+                            const date = new Date(hour.dt * 1000);
+                            const time = date.getHours();
+                            
+                            return (
+                              <div key={hour.dt} className="flex flex-col items-center p-2 bg-cream-card rounded border border-cream-border min-w-[60px]">
+                                <div className="text-cream-text text-xs">
+                                  {index === 0 ? '现在' : `${time}时`}
+                                </div>
+                                {hour.weather[0].icon && (
+                                  <img 
+                                    src={`https://openweathermap.org/img/wn/${hour.weather[0].icon}.png`} 
+                                    alt={hour.weather[0].description} 
+                                    className="w-8 h-8 my-1"
+                                  />
+                                )}
+                                <div className="text-cream-text-dark font-medium">
+                                  {hour.temp.toFixed(0)}°
+                                </div>
+                                <div className="text-cream-text text-xs">
+                                  风: {hour.wind_speed.toFixed(1)} m/s
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-cream-text-light">暂无小时预报数据</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 一周天气预报 */}
+                    <div>
                       <h4 className="font-medium text-cream-text-dark mb-2">一周天气预报</h4>
                       <div className="space-y-2">
                         {fullWeatherData.daily && fullWeatherData.daily.length > 0 ? (
@@ -855,42 +883,6 @@ export default function OutfitAssistantPage() {
                         )}
                       </div>
                     </div>
-                    
-                    {/* 小时天气预报 */}
-                    <div>
-                      <h4 className="font-medium text-cream-text-dark mb-2">24小时预报</h4>
-                      <div className="flex overflow-x-auto pb-2 space-x-2">
-                        {fullWeatherData.hourly && fullWeatherData.hourly.length > 0 ? (
-                          fullWeatherData.hourly.slice(0, 24).map((hour, index) => {
-                            const date = new Date(hour.dt * 1000);
-                            const time = date.getHours();
-                            
-                            return (
-                              <div key={hour.dt} className="flex flex-col items-center p-2 bg-cream-card rounded border border-cream-border min-w-[60px]">
-                                <div className="text-cream-text text-xs">
-                                  {index === 0 ? '现在' : `${time}时`}
-                                </div>
-                                {hour.weather[0].icon && (
-                                  <img 
-                                    src={`https://openweathermap.org/img/wn/${hour.weather[0].icon}.png`} 
-                                    alt={hour.weather[0].description} 
-                                    className="w-8 h-8 my-1"
-                                  />
-                                )}
-                                <div className="text-cream-text-dark font-medium">
-                                  {hour.temp.toFixed(0)}°
-                                </div>
-                                <div className="text-cream-text text-xs">
-                                  风: {hour.wind_speed.toFixed(1)} m/s
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <p className="text-cream-text-light">暂无小时预报数据</p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 ) : (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
@@ -908,32 +900,54 @@ export default function OutfitAssistantPage() {
                   </div>
                 ) : recommendation ? (
                   <div>
-                    <div className="mb-4">
+                    <div className="mb-6 p-4 bg-cream-bg rounded-lg border border-cream-border">
+                      <h3 className="font-medium text-cream-text-dark mb-2">推荐说明</h3>
                       <p className="text-cream-text">{recommendation.notes}</p>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {recommendation.items.map((item) => (
-                        <div key={item.id} className="bg-cream-bg rounded-lg p-4 border border-cream-border">
-                          {item.image_url ? (
-                            <img 
-                              src={item.image_url} 
-                              alt={item.name} 
-                              className="w-full h-32 object-cover rounded mb-2"
-                            />
-                          ) : (
-                            <div className="bg-cream-border w-full h-32 rounded mb-2 flex items-center justify-center">
-                              <span className="text-cream-text-light">暂无图片</span>
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-medium text-cream-text-dark">推荐搭配</h3>
+                        <span className="text-cream-text-light text-sm">{recommendation.items.length} 件单品</span>
+                      </div>
+                      {recommendation.items.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {recommendation.items.map((item) => (
+                            <div key={item.id} className="bg-cream-bg rounded-lg p-4 border border-cream-border hover:shadow-md transition-shadow duration-300">
+                              {item.image_url ? (
+                                <img 
+                                  src={item.image_url} 
+                                  alt={item.name} 
+                                  className="w-full h-32 object-cover rounded mb-2"
+                                />
+                              ) : (
+                                <div className="bg-cream-border w-full h-32 rounded mb-2 flex items-center justify-center">
+                                  <span className="text-cream-text-light">暂无图片</span>
+                                </div>
+                              )}
+                              <h4 className="font-medium text-cream-text-dark text-sm mb-1">{item.name}</h4>
+                              <div className="flex justify-between items-center">
+                                <span className="text-cream-text-light text-xs">{item.category}</span>
+                                {item.color && <span className="text-cream-text-light text-xs">颜色: {item.color}</span>}
+                              </div>
+                              {item.season && (
+                                <div className="mt-1">
+                                  <span className="inline-block px-2 py-1 text-xs bg-cream-accent text-white rounded">
+                                    {item.season}
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          <h4 className="font-medium text-cream-text-dark text-sm">{item.name}</h4>
-                          <p className="text-cream-text-light text-xs">{item.category}</p>
-                          {item.color && <p className="text-cream-text-light text-xs">颜色: {item.color}</p>}
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div className="text-center py-8 bg-cream-bg rounded-lg border border-cream-border">
+                          <p className="text-cream-text-light">暂无推荐物品</p>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="mt-6 flex justify-end space-x-3">
+                    <div className="mt-6 flex flex-wrap gap-3 justify-end">
                       <button 
                         onClick={() => setActiveTab('wardrobe')}
                         className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
@@ -943,12 +957,14 @@ export default function OutfitAssistantPage() {
                       <button 
                         onClick={saveCurrentRecommendationAsPreview}
                         className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                        disabled={recommendation.items.length === 0}
                       >
                         保存为预览
                       </button>
                       <button 
                         onClick={handleSaveOutfit}
                         className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
+                        disabled={recommendation.items.length === 0}
                       >
                         保存到历史
                       </button>
@@ -1168,10 +1184,10 @@ export default function OutfitAssistantPage() {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold text-cream-text-dark">搭配预览</h2>
                   <button 
-                    onClick={() => setShowWardrobeSelector(true)}
+                    onClick={createNewPreviewFromWardrobe}
                     className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                   >
-                    从衣柜添加
+                    从衣柜创建
                   </button>
                 </div>
                 
@@ -1192,24 +1208,30 @@ export default function OutfitAssistantPage() {
                           </button>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          {preview.items.slice(0, 4).map((item) => (
-                            <div key={item.id} className="bg-cream-card rounded p-2 border border-cream-border">
-                              {item.image_url ? (
-                                <img 
-                                  src={item.image_url} 
-                                  alt={item.name} 
-                                  className="w-full h-16 object-cover rounded mb-1"
-                                />
-                              ) : (
-                                <div className="bg-cream-border w-full h-16 rounded mb-1 flex items-center justify-center">
-                                  <span className="text-cream-text-light text-xs">无图片</span>
-                                </div>
-                              )}
-                              <p className="text-cream-text-dark text-xs font-medium truncate">{item.name}</p>
-                            </div>
-                          ))}
-                        </div>
+                        {preview.items.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            {preview.items.slice(0, 4).map((item) => (
+                              <div key={item.id} className="bg-cream-card rounded p-2 border border-cream-border">
+                                {item.image_url ? (
+                                  <img 
+                                    src={item.image_url} 
+                                    alt={item.name} 
+                                    className="w-full h-16 object-cover rounded mb-1"
+                                  />
+                                ) : (
+                                  <div className="bg-cream-border w-full h-16 rounded mb-1 flex items-center justify-center">
+                                    <span className="text-cream-text-light text-xs">无图片</span>
+                                  </div>
+                                )}
+                                <p className="text-cream-text-dark text-xs font-medium truncate">{item.name}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 bg-cream-bg rounded mb-3">
+                            <p className="text-cream-text-light text-sm">暂无物品</p>
+                          </div>
+                        )}
                         
                         <p className="text-cream-text-light text-xs">
                           {new Date(preview.createdAt).toLocaleDateString('zh-CN', {
@@ -1218,6 +1240,30 @@ export default function OutfitAssistantPage() {
                             day: 'numeric'
                           })}
                         </p>
+                        
+                        <div className="flex justify-end mt-3 space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedPreview(preview);
+                              setShowWardrobeSelector(true);
+                            }}
+                            className="text-cream-text-light hover:text-cream-accent text-xs"
+                          >
+                            添加物品
+                          </button>
+                          <button
+                            onClick={() => {
+                              // 删除预览
+                              setOutfitPreviews(prev => prev.filter(p => p.id !== preview.id));
+                              if (selectedPreview?.id === preview.id) {
+                                setSelectedPreview(null);
+                              }
+                            }}
+                            className="text-cream-text-light hover:text-red-500 text-xs"
+                          >
+                            删除
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1231,7 +1277,7 @@ export default function OutfitAssistantPage() {
                       生成推荐搭配
                     </button>
                     <button 
-                      onClick={() => setShowWardrobeSelector(true)}
+                      onClick={createNewPreviewFromWardrobe}
                       className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     >
                       从衣柜创建
@@ -1505,7 +1551,7 @@ export default function OutfitAssistantPage() {
                                 ? 'bg-cream-accent text-white'
                                 : 'bg-cream-bg border border-cream-border text-cream-text hover:bg-cream-accent hover:text-white'
                             }`}
-                            onClick={() => editingItem && handleEditTagChange(tag)}
+                            onClick={() => editingItem && handleTagChange(tag)}
                           >
                             #{tag}
                           </span>
@@ -1641,7 +1687,7 @@ export default function OutfitAssistantPage() {
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-cream-text-dark">
-                      {selectedPreview.name}
+                      搭配预览: {selectedPreview.name}
                     </h3>
                     <button 
                       onClick={() => setShowPreviewModal(false)}
@@ -1666,33 +1712,103 @@ export default function OutfitAssistantPage() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                    {selectedPreview.items.map((item) => (
-                      <div key={item.id} className="bg-cream-bg rounded-lg p-3 border border-cream-border">
-                        {item.image_url ? (
-                          <img 
-                            src={item.image_url} 
-                            alt={item.name} 
-                            className="w-full h-24 object-cover rounded mb-2"
-                          />
-                        ) : (
-                          <div className="bg-cream-border w-full h-24 rounded mb-2 flex items-center justify-center">
-                            <span className="text-cream-text-light text-xs">暂无图片</span>
-                          </div>
-                        )}
-                        <h4 className="font-medium text-cream-text-dark text-sm truncate">{item.name}</h4>
-                        <p className="text-cream-text-light text-xs">{item.category}</p>
+                  <div className="mb-6">
+                    <h4 className="font-medium text-cream-text-dark mb-3">搭配详情</h4>
+                    {selectedPreview.items.length === 0 ? (
+                      <div className="text-center py-4 bg-cream-bg rounded-lg border border-cream-border">
+                        <p className="text-cream-text-light">暂无物品，请从衣柜添加</p>
+                        <button
+                          onClick={() => {
+                            setShowPreviewModal(false);
+                            setShowWardrobeSelector(true);
+                          }}
+                          className="mt-2 bg-cream-accent hover:bg-cream-accent-hover text-white px-3 py-1 rounded text-sm"
+                        >
+                          从衣柜添加
+                        </button>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {selectedPreview.items.map((item) => (
+                          <div key={item.id} className="bg-cream-bg rounded-lg p-3 border border-cream-border relative">
+                            <button
+                              onClick={() => {
+                                // 从搭配中移除物品
+                                setSelectedPreview(prev => prev ? {
+                                  ...prev,
+                                  items: prev.items.filter(i => i.id !== item.id)
+                                } : null);
+                              }}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                            {item.image_url ? (
+                              <img 
+                                src={item.image_url} 
+                                alt={item.name} 
+                                className="w-full h-24 object-cover rounded mb-2"
+                              />
+                            ) : (
+                              <div className="bg-cream-border w-full h-24 rounded mb-2 flex items-center justify-center">
+                                <span className="text-cream-text-light text-xs">暂无图片</span>
+                              </div>
+                            )}
+                            <h4 className="font-medium text-cream-text-dark text-sm truncate">{item.name}</h4>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-cream-text-light text-xs">{item.category}</span>
+                              {item.color && <span className="text-cream-text-light text-xs">{item.color}</span>}
+                            </div>
+                            {item.season && (
+                              <div className="mt-1">
+                                <span className="inline-block px-2 py-1 text-xs bg-cream-accent text-white rounded">
+                                  {item.season}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="flex justify-end">
+                  {selectedPreview.items.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-cream-text-dark mb-2">搭配说明</h4>
+                      <div className="bg-cream-bg rounded-lg p-4 border border-cream-border">
+                        <p className="text-cream-text">
+                          这套搭配包含 {selectedPreview.items.length} 件单品，适合多种场合穿着。
+                          {selectedPreview.items.some(item => item.category === '外套') && ' 外套可根据天气变化灵活搭配。'}
+                          {selectedPreview.items.some(item => item.category === '配饰') && ' 配饰为整体造型增添亮点。'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3">
                     <button
-                      onClick={saveOutfitPreview}
-                      className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
+                      onClick={() => setShowPreviewModal(false)}
+                      className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                     >
-                      保存搭配
+                      关闭
                     </button>
+                    <button
+                      onClick={() => {
+                        setShowPreviewModal(false);
+                        setShowWardrobeSelector(true);
+                      }}
+                      className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                    >
+                      继续添加
+                    </button>
+                    {selectedPreview.items.length > 0 && (
+                      <button
+                        onClick={saveOutfitPreview}
+                        className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
+                      >
+                        保存搭配
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1707,7 +1823,11 @@ export default function OutfitAssistantPage() {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-cream-text-dark">从衣柜选择物品</h3>
                     <button 
-                      onClick={() => setShowWardrobeSelector(false)}
+                      onClick={() => {
+                        // 清除临时预览
+                        setSelectedPreview(null);
+                        setShowWardrobeSelector(false);
+                      }}
                       className="text-cream-text-light hover:text-cream-text-dark"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1716,34 +1836,47 @@ export default function OutfitAssistantPage() {
                     </button>
                   </div>
                   
+                  {/* 如果没有选中任何预览，则创建一个新的 */}
+                  {!selectedPreview && (
+                    <div className="mb-4 p-3 bg-cream-bg rounded-lg border border-cream-border">
+                      <p className="text-cream-text-dark mb-2">您需要先创建一个搭配预览或选择一个现有的预览</p>
+                      <button
+                        onClick={createNewPreviewFromWardrobe}
+                        className="bg-cream-accent hover:bg-cream-accent-hover text-white px-3 py-1 rounded text-sm"
+                      >
+                        创建新的搭配预览
+                      </button>
+                    </div>
+                  )}
+                  
+                  {selectedPreview && (
+                    <div className="mb-4 p-3 bg-cream-bg rounded-lg border border-cream-border">
+                      <h4 className="font-medium text-cream-text-dark mb-2">当前搭配: {selectedPreview.name}</h4>
+                      <p className="text-cream-text text-sm">已选择 {selectedPreview.items.length} 件物品</p>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                     {wardrobeItems.map((item) => (
                       <div 
                         key={item.id} 
-                        className="bg-cream-bg rounded-lg p-3 border border-cream-border cursor-pointer hover:border-cream-accent transition duration-300"
+                        className={`bg-cream-bg rounded-lg p-3 border cursor-pointer transition duration-300 relative ${
+                          selectedPreview && selectedPreview.items.some(i => i.id === item.id) 
+                            ? 'border-cream-accent bg-cream-accent bg-opacity-10' 
+                            : 'border-cream-border hover:border-cream-accent'
+                        }`}
                         onClick={() => {
                           if (selectedPreview) {
-                            // 检查是否已选择该物品
-                            const isItemSelected = selectedPreview.items.some(i => i.id === item.id);
-                            if (isItemSelected) {
-                              // 如果已选择，则移除
-                              setSelectedPreview(prev => prev ? {
-                                ...prev,
-                                items: prev.items.filter(i => i.id !== item.id)
-                              } : null);
-                            } else {
-                              // 如果未选择，则添加
-                              setSelectedPreview(prev => prev ? {
-                                ...prev,
-                                items: [...prev.items, item]
-                              } : null);
-                            }
+                            handleWardrobeItemSelect(item);
+                          } else {
+                            // 如果没有选中的预览，创建一个新的
+                            createNewPreviewFromWardrobe();
                           }
                         }}
                       >
                         {selectedPreview && selectedPreview.items.some(i => i.id === item.id) && (
-                          <div className="absolute top-1 right-1 w-5 h-5 bg-cream-accent rounded-full flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <div className="absolute top-1 right-1 w-6 h-6 bg-cream-accent rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                           </div>
@@ -1762,28 +1895,43 @@ export default function OutfitAssistantPage() {
                         )}
                         <h4 className="font-medium text-cream-text-dark text-sm truncate">{item.name}</h4>
                         <p className="text-cream-text-light text-xs">{item.category}</p>
+                        {item.color && <p className="text-cream-text-light text-xs">颜色: {item.color}</p>}
                       </div>
                     ))}
                   </div>
                   
                   <div className="flex justify-end space-x-3">
                     <button
-                      onClick={() => setShowWardrobeSelector(false)}
+                      onClick={() => {
+                        // 清除临时预览
+                        setSelectedPreview(null);
+                        setShowWardrobeSelector(false);
+                      }}
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                     >
                       取消
                     </button>
-                    <button
-                      onClick={() => {
-                        if (selectedPreview && selectedPreview.items.length > 0) {
-                          setShowPreviewModal(true);
-                        }
-                        setShowWardrobeSelector(false);
-                      }}
-                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
-                    >
-                      完成选择
-                    </button>
+                    {selectedPreview && selectedPreview.items.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (selectedPreview && selectedPreview.items.length > 0) {
+                              setShowWardrobeSelector(false);
+                              setShowPreviewModal(true);
+                            }
+                          }}
+                          className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                        >
+                          查看搭配
+                        </button>
+                        <button
+                          onClick={saveOutfitFromWardrobeSelector}
+                          className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
+                        >
+                          保存搭配
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

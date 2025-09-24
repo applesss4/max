@@ -6,6 +6,7 @@ CREATE TABLE wardrobe_items (
   category VARCHAR(100) NOT NULL, -- 上衣、裤子、鞋子、配饰等
   color VARCHAR(50), -- 颜色
   season VARCHAR(50), -- 春、夏、秋、冬、四季
+  tags TEXT[], -- 标签
   image_url TEXT, -- 衣服图片URL
   purchase_date DATE, -- 购买日期
   brand VARCHAR(100), -- 品牌

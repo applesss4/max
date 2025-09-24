@@ -14,6 +14,27 @@ export interface WeatherData {
   description: string; // 天气描述
 }
 
+// 检查环境变量并提供更详细的错误信息
+const getApiKey = (): string | null => {
+  const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+  
+  // 在开发环境中检查.env.local文件
+  if (process.env.NODE_ENV === 'development') {
+    if (!apiKey) {
+      console.warn('警告: NEXT_PUBLIC_OPENWEATHER_API_KEY 未在.env.local文件中配置');
+    }
+  } else {
+    // 在生产环境中提供更详细的错误信息
+    if (!apiKey) {
+      console.error('错误: NEXT_PUBLIC_OPENWEATHER_API_KEY 未配置');
+      console.error('请在Vercel项目设置中添加环境变量 NEXT_PUBLIC_OPENWEATHER_API_KEY');
+      console.error('或者在部署时确保环境变量已正确设置');
+    }
+  }
+  
+  return apiKey || null;
+};
+
 // OpenWeather API响应接口
 interface OpenWeatherResponse {
   coord: {
@@ -281,7 +302,7 @@ interface OverviewResponse {
 export const getWeatherByCity = async (city: string): Promise<WeatherData | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     console.log('API密钥是否存在:', !!apiKey);
     if (apiKey) {
@@ -369,7 +390,7 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
 export const getWeatherByCoordinates = async (lat: number, lon: number): Promise<WeatherData | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
@@ -490,7 +511,7 @@ export const getCurrentLocationWeather = async (): Promise<WeatherData | null> =
 export const getCoordinatesByZipCode = async (zipCode: string, countryCode: string): Promise<ZipCodeResponse | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
@@ -573,7 +594,7 @@ export const getWeatherByZipCode = async (zipCode: string, countryCode: string):
 export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCallResponse | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     console.log('API密钥是否存在 (OneCall):', !!apiKey);
     if (apiKey) {
@@ -648,7 +669,7 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
 export const getHistoricalWeather = async (lat: number, lon: number, timestamp: number): Promise<TimeMachineResponse | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
@@ -708,7 +729,7 @@ export const getHistoricalWeather = async (lat: number, lon: number, timestamp: 
 export const getDaySummary = async (lat: number, lon: number, date: string): Promise<DaySummaryResponse | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
@@ -767,7 +788,7 @@ export const getDaySummary = async (lat: number, lon: number, date: string): Pro
 export const getWeatherOverview = async (lat: number, lon: number): Promise<OverviewResponse | null> => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
@@ -824,7 +845,7 @@ export const getWeatherOverview = async (lat: number, lon: number): Promise<Over
 export const getWeatherAssistantUrl = (): string | null => {
   try {
     // 从环境变量获取API密钥
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       console.error('OpenWeather API密钥未配置');
