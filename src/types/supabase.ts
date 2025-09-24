@@ -533,6 +533,36 @@ export interface Database {
           updated_at?: string
         }
       }
+      // 添加搭配预览表类型定义
+      outfit_previews: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          items: Json | null
+          network_image_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          items?: Json | null
+          network_image_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          items?: Json | null
+          network_image_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

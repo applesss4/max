@@ -25,6 +25,7 @@ import {
   OneCallResponse, 
   WeatherData as WeatherApiData 
 } from '@/services/weatherService'
+import { getNetworkOutfitRecommendation } from '@/services/networkOutfitService'
 
 // 定义类型
 interface WardrobeItem {
@@ -46,6 +47,7 @@ interface WardrobeItem {
 interface OutfitRecommendation {
   items: WardrobeItem[]
   notes: string
+  networkImageUrl?: string // 添加网络图片URL字段
 }
 
 interface OutfitHistoryItem {
@@ -65,6 +67,7 @@ interface OutfitPreview {
   user_id: string
   name: string
   items: WardrobeItem[]
+  network_image_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -113,23 +116,30 @@ export default function OutfitAssistantPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPreview, setSelectedPreview] = useState<OutfitPreview | null>(null)
   const [showWardrobeSelector, setShowWardrobeSelector] = useState(false)
-
+  const [networkImageUrl, setNetworkImageUrl] = useState<string>('') // 添加网络图片URL状态
+  
   // 获取用户衣柜物品
   const fetchWardrobeItems = useCallback(async () => {
-    if (!user) return
+    console.log('開始获取用户衣柜物品...', { userId: user?.id });
+    if (!user) {
+      console.log('无法获取衣柜物品：用户未登录');
+      return;
+    }
 
-    setLoadingWardrobe(true)
+    setLoadingWardrobe(true);
     try {
-      const { data, error } = await getWardrobeItems(user.id)
-      if (error) throw error
+      const { data, error } = await getWardrobeItems(user.id);
+      console.log('获取衣柜物品结果:', { data, error });
+      if (error) throw error;
       if (data) {
-        setWardrobeItems(data)
+        setWardrobeItems(data);
+        console.log('成功设置衣柜物品:', data.length);
       }
     } catch (error) {
-      console.error('获取衣柜物品失败:', error)
-      alert('获取衣柜物品失败，请稍后重试')
+      console.error('获取衣柜物品失败:', error);
+      alert('获取衣柜物品失败，请稍后重试');
     } finally {
-      setLoadingWardrobe(false)
+      setLoadingWardrobe(false);
     }
   }, [user])
 
@@ -178,6 +188,7 @@ export default function OutfitAssistantPage() {
 
   // 获取天气数据（真实的API调用）
   const fetchWeatherData = useCallback(async () => {
+    console.log('開始获取天气数据...');
     try {
       // 获取日本千葉の天气データ
       console.log('開始获取日本千葉天气データ...');
@@ -265,15 +276,29 @@ export default function OutfitAssistantPage() {
       setWeatherData(mockWeather);
       alert('获取天气データ失败，将使用模拟データ');
     }
-  }, [])
+  }, []);
 
   // 生成穿搭推荐
   const generateOutfitRecommendation = useCallback(async () => {
-    if (!weatherData || wardrobeItems.length === 0) return
+    console.log('開始生成穿搭推薦...', { 
+      hasWeatherData: !!weatherData, 
+      wardrobeItemsCount: wardrobeItems.length,
+      weatherData,
+      wardrobeItems
+    });
+    
+    if (!weatherData || wardrobeItems.length === 0) {
+      console.log('無法生成推薦：缺少必要數據', { 
+        hasWeatherData: !!weatherData, 
+        wardrobeItemsCount: wardrobeItems.length
+      });
+      return;
+    }
 
-    setLoadingRecommendation(true)
+    setLoadingRecommendation(true);
     try {
       // 使用优化的推荐逻辑
+      console.log('調用推薦算法...');
       const result = generateOptimizedOutfitRecommendation(
         {
           temperature: weatherData.temperature,
@@ -282,19 +307,38 @@ export default function OutfitAssistantPage() {
         wardrobeItems
       );
       
-      setRecommendation(result);
+      // 添加网络推荐图片
+      console.log('获取网络推荐图片...');
+      const networkImageUrl = await getNetworkOutfitRecommendation(
+        weatherData.temperature,
+        weatherData.condition
+      );
+      
+      if (networkImageUrl) {
+        console.log('成功获取网络推荐图片:', networkImageUrl);
+        setRecommendation({
+          ...result,
+          networkImageUrl
+        });
+      } else {
+        console.log('未获取到网络推荐图片，使用默认推荐');
+        setRecommendation(result);
+      }
     } catch (error) {
-      console.error('生成穿搭推薦失敗:', error)
+      console.error('生成穿搭推薦失敗:', error);
       // 出错时提供默认推荐
       const defaultItems = wardrobeItems.slice(0, 3);
       const notes = `根据当前天气情况，为您推荐这套基础穿搭搭配。`;
       
-      setRecommendation({
+      const defaultRecommendation = {
         items: defaultItems,
         notes
-      })
+      };
+      
+      console.log('使用默认推荐:', defaultRecommendation);
+      setRecommendation(defaultRecommendation);
     } finally {
-      setLoadingRecommendation(false)
+      setLoadingRecommendation(false);
     }
   }, [weatherData, wardrobeItems])
 
@@ -365,7 +409,8 @@ export default function OutfitAssistantPage() {
         const newPreview = {
           user_id: user.id,
           name: `今日推荐 ${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
-          items: recommendation.items
+          items: recommendation.items,
+          network_image_url: recommendation.networkImageUrl || null // 保存网络图片URL
         }
         
         const { data, error } = await saveOutfitPreviewToDB(newPreview)
@@ -423,6 +468,29 @@ export default function OutfitAssistantPage() {
       alert('衣装履歴の保存に失敗しました。もう一度試してください');
     }
   };
+
+  // 添加网络推荐图
+  const addNetworkRecommendationImage = () => {
+    if (!networkImageUrl) {
+      alert('请输入网络图片URL');
+      return;
+    }
+
+    // 验证URL格式
+    try {
+      new URL(networkImageUrl);
+      // 更新推荐状态，添加网络图片URL
+      if (recommendation) {
+        setRecommendation({
+          ...recommendation,
+          networkImageUrl: networkImageUrl
+        });
+      }
+      alert('网络推荐图已添加!');
+    } catch (e) {
+      alert('请输入有效的URL地址');
+    }
+  }
 
   // 打开编辑模态框
   const openEditModal = (item: WardrobeItem) => {
@@ -491,7 +559,7 @@ export default function OutfitAssistantPage() {
     }
   }
 
-  // 衣装统计信息计算
+  // 衣装统计信息計算
   const getWardrobeStats = () => {
     const totalItems = wardrobeItems.length;
     const categoryCounts: Record<string, number> = {};
@@ -785,10 +853,24 @@ export default function OutfitAssistantPage() {
 
   // 当天气数据和衣柜物品都准备好后，生成推荐
   useEffect(() => {
+    console.log('检查推荐条件:', { 
+      hasWeatherData: !!weatherData, 
+      hasWardrobeItems: wardrobeItems.length > 0, 
+      isRecommendTab: activeTab === 'recommend',
+      wardrobeItemsCount: wardrobeItems.length
+    });
+    
     if (weatherData && wardrobeItems.length > 0 && activeTab === 'recommend') {
-      generateOutfitRecommendation()
+      console.log('满足推荐条件，生成穿搭推荐...');
+      generateOutfitRecommendation();
+    } else if (activeTab === 'recommend' && !weatherData) {
+      console.log('在推荐标签页但没有天气数据，尝试获取天气数据...');
+      fetchWeatherData();
+    } else if (activeTab === 'recommend' && weatherData && wardrobeItems.length === 0) {
+      console.log('在推荐标签页且有天气数据但没有衣柜物品，提示用户添加物品...');
+      // 这种情况下会在UI中显示提示信息
     }
-  }, [weatherData, wardrobeItems, activeTab, generateOutfitRecommendation])
+  }, [weatherData, wardrobeItems, activeTab, generateOutfitRecommendation, fetchWeatherData]);
 
   // 添加定时刷新天气数据的功能
   // 当用户切换到推荐标签页时，确保获取最新的天气数据
@@ -799,15 +881,15 @@ export default function OutfitAssistantPage() {
     // 立即获取一次数据
     fetchWeatherData();
 
-    // 设置定时器，每15分钟刷新一次天气数据
+    // 设置定时器，每15分钟刷新一次天气データ
     const intervalId = setInterval(() => {
-      console.log('定时刷新天气数据...');
+      console.log('定时刷新天气データ...');
       fetchWeatherData();
     }, 15 * 60 * 1000); // 15分钟
 
     // 清理定时器
     return () => {
-      console.log('清理天气数据刷新定时器');
+      console.log('清理天气データ刷新定时器');
       clearInterval(intervalId);
     };
   }, [activeTab, user, fetchWeatherData]);
@@ -927,6 +1009,57 @@ export default function OutfitAssistantPage() {
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
                 <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日穿搭推荐</h2>
                 
+                {/* 网络推荐图添加区域 */}
+                <div className="bg-cream-bg rounded-lg p-4 mb-6 border border-cream-border">
+                  <h3 className="font-medium text-cream-text-dark mb-2">添加网络推荐搭配图</h3>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={networkImageUrl}
+                      onChange={(e) => setNetworkImageUrl(e.target.value)}
+                      placeholder="请输入网络图片URL"
+                      className="flex-1 px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                    />
+                    <button
+                      onClick={addNetworkRecommendationImage}
+                      className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
+                    >
+                      添加
+                    </button>
+                  </div>
+                </div>
+                
+                {/* 网络推荐图展示区域 */}
+                {recommendation?.networkImageUrl && (
+                  <div className="bg-cream-bg rounded-lg p-4 mb-6 border border-cream-border">
+                    <h3 className="font-medium text-cream-text-dark mb-2">网络推荐搭配图</h3>
+                    <div className="flex justify-center">
+                      <img 
+                        src={recommendation.networkImageUrl} 
+                        alt="网络推荐搭配" 
+                        className="max-w-full h-auto rounded-lg shadow-md"
+                        style={{ maxHeight: '300px' }}
+                      />
+                    </div>
+                    <div className="mt-2 text-center">
+                      <button
+                        onClick={() => {
+                          if (recommendation) {
+                            setRecommendation({
+                              ...recommendation,
+                              networkImageUrl: undefined
+                            });
+                            setNetworkImageUrl('');
+                          }
+                        }}
+                        className="text-cream-text-light hover:text-cream-accent text-sm"
+                      >
+                        移除网络推荐图
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="bg-cream-bg rounded-lg p-4 mb-6">
                   <h3 className="font-medium text-cream-text-dark mb-2">今日天气</h3>
                   {weatherData ? (
@@ -944,10 +1077,10 @@ export default function OutfitAssistantPage() {
                   )}
                 </div>
                 
-                {/* 完整天气信息展示 */}
+                {/* 完整天气情報展示 */}
                 {fullWeatherData ? (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-3">详细天气信息</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-3">詳細天气情報</h3>
                     
                     {/* 当前天气详情 */}
                     <div className="mb-4 p-3 bg-cream-card rounded border border-cream-border">
@@ -1064,7 +1197,7 @@ export default function OutfitAssistantPage() {
                   </div>
                 ) : (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-3">详细天气信息</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-3">詳細天气情報</h3>
                     <p className="text-cream-text-light">正在加载天气预报数据...</p>
                   </div>
                 )}
@@ -1163,10 +1296,10 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 我的衣柜标签页 */}
+          {/* 我の衣柜标签页 */}
           {activeTab === 'wardrobe' && (
             <div>
-              {/* 统计信息卡片 */}
+              {/* 统計情報カード */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border">
                   <h3 className="text-lg font-semibold text-cream-text-dark mb-4">衣柜统计</h3>
@@ -1890,6 +2023,21 @@ export default function OutfitAssistantPage() {
                       className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                     />
                   </div>
+                  
+                  {/* 网络推荐图展示 */}
+                  {(selectedPreview as any).network_image_url && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-cream-text-dark mb-2">网络推荐搭配图</h4>
+                      <div className="flex justify-center">
+                        <img 
+                          src={(selectedPreview as any).network_image_url} 
+                          alt="网络推荐搭配" 
+                          className="max-w-full h-auto rounded-lg shadow-md"
+                          style={{ maxHeight: '300px' }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="mb-6">
                     <h4 className="font-medium text-cream-text-dark mb-3">搭配详情</h4>
