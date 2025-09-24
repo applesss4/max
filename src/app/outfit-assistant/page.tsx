@@ -47,7 +47,7 @@ interface WardrobeItem {
 interface OutfitRecommendation {
   items: WardrobeItem[]
   notes: string
-  networkImageUrl?: string // 添加网络图片URL字段
+  networkImageUrls?: string[] // 修改为数组
 }
 
 interface OutfitHistoryItem {
@@ -423,20 +423,23 @@ export default function OutfitAssistantPage() {
       
       // 添加网络推荐图片
       console.log('获取网络推荐图片...');
-      const networkImageUrl = await getNetworkOutfitRecommendation(
+      const networkImageUrls = await getNetworkOutfitRecommendation(
         weatherData.temperature,
         weatherData.condition
       );
       
-      if (networkImageUrl) {
-        console.log('成功获取网络推荐图片:', networkImageUrl);
+      if (networkImageUrls && networkImageUrls.length > 0) {
+        console.log('成功获取网络推荐图片:', networkImageUrls);
         setRecommendation({
           ...result,
-          networkImageUrl
+          networkImageUrls: networkImageUrls
         });
       } else {
         console.log('未获取到网络推荐图片，使用默认推荐');
-        setRecommendation(result);
+        setRecommendation({
+          ...result,
+          networkImageUrls: []
+        });
       }
     } catch (error) {
       console.error('生成穿搭推薦失敗:', error);
@@ -446,7 +449,8 @@ export default function OutfitAssistantPage() {
       
       const defaultRecommendation = {
         items: defaultItems,
-        notes
+        notes,
+        networkImageUrls: []
       };
       
       console.log('使用默认推荐:', defaultRecommendation);
@@ -524,7 +528,7 @@ export default function OutfitAssistantPage() {
           user_id: user.id,
           name: `今日推荐 ${new Date().toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}`,
           items: recommendation.items,
-          network_image_url: recommendation.networkImageUrl || null // 保存网络图片URL
+          network_image_url: recommendation.networkImageUrls && recommendation.networkImageUrls.length > 0 ? recommendation.networkImageUrls[0] : null // 保存网络图片URL
         }
         
         const { data, error } = await saveOutfitPreviewToDB(newPreview)
@@ -1281,16 +1285,20 @@ export default function OutfitAssistantPage() {
                     <div className="mb-6 p-4 bg-cream-bg rounded-lg border border-cream-border">
                       <h3 className="font-medium text-cream-text-dark mb-2">推荐说明</h3>
                       <p className="text-cream-text">{recommendation.notes}</p>
-                      {recommendation.networkImageUrl && (
+                      {recommendation.networkImageUrls && recommendation.networkImageUrls.length > 0 && (
                         <div className="mt-4">
                           <h4 className="font-medium text-cream-text-dark mb-2">网络推荐参考图</h4>
-                          <div className="flex justify-center">
-                            <img 
-                              src={recommendation.networkImageUrl} 
-                              alt="网络推荐搭配参考" 
-                              className="max-w-full h-auto rounded-lg shadow-md"
-                              style={{ maxHeight: '300px' }}
-                            />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {recommendation.networkImageUrls.slice(0, 2).map((url, index) => (
+                              <div key={index} className="flex justify-center">
+                                <img 
+                                  src={url} 
+                                  alt={`网络推荐搭配参考 ${index + 1}`} 
+                                  className="max-w-full h-auto rounded-lg shadow-md"
+                                  style={{ maxHeight: '300px' }}
+                                />
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
