@@ -85,18 +85,6 @@ export default function OutfitAssistantPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPreview, setSelectedPreview] = useState<OutfitPreview | null>(null)
   const [showWardrobeSelector, setShowWardrobeSelector] = useState(false)
-  // 新增状态用于天气地址功能
-  const [weatherLocation, setWeatherLocation] = useState({
-    city: 'Chiba',
-    lat: 35.6073,
-    lon: 140.1065
-  })
-  const [showLocationModal, setShowLocationModal] = useState(false)
-  const [newLocation, setNewLocation] = useState({
-    city: 'Chiba',
-    lat: 35.6073,
-    lon: 140.1065
-  })
 
   // 获取用户衣柜物品
   const fetchWardrobeItems = useCallback(async () => {
@@ -140,85 +128,48 @@ export default function OutfitAssistantPage() {
   // 获取天气数据（真实的API调用）
   const fetchWeatherData = useCallback(async () => {
     try {
-      // 获取指定位置的天气数据
-      console.log(`開始获取${weatherLocation.city}天气数据...`);
+      // 获取日本千叶的天气数据
+      console.log('開始获取日本千葉天气数据...');
       // 方法1: 使用城市名获取天气
-      const weather = await getWeatherByCity(weatherLocation.city);
+      const weather = await getWeatherByCity('Chiba');
       
       if (weather) {
-        console.log(`成功获取${weatherLocation.city}天气数据:`, weather);
+        console.log('成功获取千葉天气数据:', weather);
         setWeatherData(weather);
         
         // 获取完整的天气预报数据
         try {
-          const fullWeather = await getOneCallWeather(weatherLocation.lat, weatherLocation.lon);
+          // 使用千葉の经纬度获取完整天气数据
+          // 千葉の经纬度大约为: 纬度35.6073, 经度140.1065
+          const fullWeather = await getOneCallWeather(35.6073, 140.1065);
           if (fullWeather) {
-            console.log(`成功获取${weatherLocation.city}完整天气数据:`, fullWeather);
+            console.log('成功获取千葉完整天气数据:', fullWeather);
             setFullWeatherData(fullWeather);
-          } else {
-            console.warn(`无法获取${weatherLocation.city}完整天气数据`);
-            // 如果OneCall API失败，尝试使用其他方式获取更多天气信息
-            const fallbackWeather = await getWeatherByCoordinates(weatherLocation.lat, weatherLocation.lon);
-            if (fallbackWeather) {
-              console.log(`通过经纬度获取${weatherLocation.city}天气数据作为备选:`, fallbackWeather);
-              // 这里可以设置一些默认的完整天气数据
-              setFullWeatherData({
-                lat: weatherLocation.lat,
-                lon: weatherLocation.lon,
-                timezone: 'Asia/Tokyo',
-                timezone_offset: 32400,
-                current: {
-                  dt: Math.floor(Date.now() / 1000),
-                  sunrise: Math.floor(Date.now() / 1000) - 3600,
-                  sunset: Math.floor(Date.now() / 1000) + 3600,
-                  temp: fallbackWeather.temperature,
-                  feels_like: fallbackWeather.temperature,
-                  pressure: fallbackWeather.pressure,
-                  humidity: fallbackWeather.humidity,
-                  dew_point: fallbackWeather.temperature - 5,
-                  uvi: 5,
-                  clouds: 20,
-                  visibility: fallbackWeather.visibility,
-                  wind_speed: fallbackWeather.windSpeed,
-                  wind_deg: 180,
-                  wind_gust: fallbackWeather.windSpeed + 1,
-                  weather: [{
-                    id: 800,
-                    main: fallbackWeather.condition,
-                    description: fallbackWeather.description,
-                    icon: fallbackWeather.icon
-                  }]
-                },
-                hourly: [],
-                daily: []
-              } as OneCallResponse);
-            }
           }
         } catch (error) {
-          console.error(`获取${weatherLocation.city}完整天气数据失败:`, error);
+          console.error('获取千葉完整天气数据失败:', error);
         }
       } else {
-        console.warn(`无法获取${weatherLocation.city}天气数据，尝试使用经纬度获取...`);
+        console.warn('无法获取千葉天气数据，尝试使用经纬度获取...');
         // 方法2: 如果城市名获取失败，使用经纬度获取
-        const weatherByCoords = await getWeatherByCoordinates(weatherLocation.lat, weatherLocation.lon);
+        // 日本千葉の经纬度大约为: 纬度35.6073, 经度140.1065
+        const weatherByCoords = await getWeatherByCoordinates(35.6073, 140.1065);
         if (weatherByCoords) {
-          console.log(`通过经纬度成功获取${weatherLocation.city}天气数据:`, weatherByCoords);
+          console.log('通过经纬度成功获取千葉天气数据:', weatherByCoords);
           setWeatherData(weatherByCoords);
           
           // 获取完整的天气预报数据
           try {
-            const fullWeather = await getOneCallWeather(weatherLocation.lat, weatherLocation.lon);
+            const fullWeather = await getOneCallWeather(35.6073, 140.1065);
             if (fullWeather) {
-              console.log(`成功获取${weatherLocation.city}完整天气数据:`, fullWeather);
+              console.log('成功获取千葉完整天气数据:', fullWeather);
               setFullWeatherData(fullWeather);
-            } else {
-              console.warn(`无法获取${weatherLocation.city}完整天气数据`);
             }
           } catch (error) {
-            console.error(`获取${weatherLocation.city}完整天气数据失败:`, error);
+            console.error('获取千葉完整天气数据失败:', error);
           }
         } else {
-          console.warn(`无法通过经纬度获取${weatherLocation.city}天气数据，使用模拟数据`);
+          console.warn('无法通过经纬度获取千葉天气数据，使用模拟数据');
           // 如果API调用失败，使用模拟数据
           const mockWeather: WeatherApiData = {
             temperature: 22,
@@ -227,106 +178,16 @@ export default function OutfitAssistantPage() {
             windSpeed: 3.2,
             pressure: 1013,
             visibility: 10000,
-            city: weatherLocation.city,
+            city: '千葉',
             country: 'JP',
             icon: '01d',
             description: '晴'
           };
           setWeatherData(mockWeather);
-          
-          // 设置模拟的完整天气数据
-          const mockFullWeather: OneCallResponse = {
-            lat: weatherLocation.lat,
-            lon: weatherLocation.lon,
-            timezone: 'Asia/Tokyo',
-            timezone_offset: 32400,
-            current: {
-              dt: Math.floor(Date.now() / 1000),
-              sunrise: Math.floor(Date.now() / 1000) - 3600,
-              sunset: Math.floor(Date.now() / 1000) + 3600,
-              temp: 22,
-              feels_like: 23,
-              pressure: 1013,
-              humidity: 65,
-              dew_point: 15,
-              uvi: 5,
-              clouds: 0,
-              visibility: 10000,
-              wind_speed: 3.2,
-              wind_deg: 180,
-              wind_gust: 5.1,
-              weather: [{
-                id: 800,
-                main: 'Clear',
-                description: '晴',
-                icon: '01d'
-              }]
-            },
-            hourly: Array.from({ length: 24 }, (_, i) => ({
-              dt: Math.floor(Date.now() / 1000) + i * 3600,
-              temp: 22 + Math.sin(i / 3) * 5,
-              feels_like: 23 + Math.sin(i / 3) * 5,
-              pressure: 1013,
-              humidity: 65,
-              dew_point: 15,
-              uvi: Math.max(0, 5 - Math.abs(i - 12) / 3),
-              clouds: Math.max(0, 20 - Math.abs(i - 12)),
-              visibility: 10000,
-              wind_speed: 3.2 + Math.random() * 2,
-              wind_deg: 180 + Math.random() * 40 - 20,
-              wind_gust: 5.1 + Math.random() * 2,
-              weather: [{
-                id: 800,
-                main: 'Clear',
-                description: '晴',
-                icon: i < 6 || i > 18 ? '01n' : '01d'
-              }],
-              pop: Math.max(0, Math.sin(i / 6) * 0.3)
-            })),
-            daily: Array.from({ length: 7 }, (_, i) => ({
-              dt: Math.floor(Date.now() / 1000) + i * 86400,
-              sunrise: Math.floor(Date.now() / 1000) + i * 86400 - 3600,
-              sunset: Math.floor(Date.now() / 1000) + i * 86400 + 3600,
-              moonrise: 0,
-              moonset: 0,
-              moon_phase: 0.5,
-              temp: {
-                day: 22 + Math.random() * 10 - 5,
-                min: 15 + Math.random() * 8 - 4,
-                max: 25 + Math.random() * 10 - 5,
-                night: 18 + Math.random() * 8 - 4,
-                eve: 21 + Math.random() * 8 - 4,
-                morn: 17 + Math.random() * 6 - 3
-              },
-              feels_like: {
-                day: 23 + Math.random() * 10 - 5,
-                night: 19 + Math.random() * 8 - 4,
-                eve: 22 + Math.random() * 8 - 4,
-                morn: 18 + Math.random() * 6 - 3
-              },
-              pressure: 1013 + Math.random() * 20 - 10,
-              humidity: 65 + Math.random() * 20 - 10,
-              dew_point: 15 + Math.random() * 5 - 2.5,
-              wind_speed: 3.2 + Math.random() * 3,
-              wind_deg: Math.random() * 360,
-              wind_gust: 5.1 + Math.random() * 3,
-              weather: [{
-                id: 800 + Math.floor(Math.random() * 100),
-                main: ['Clear', 'Clouds', 'Rain'][Math.floor(Math.random() * 3)],
-                description: ['晴', '多云', '小雨'][Math.floor(Math.random() * 3)],
-                icon: ['01d', '02d', '03d', '04d', '09d', '10d'][Math.floor(Math.random() * 6)]
-              }],
-              clouds: Math.random() * 50,
-              pop: Math.random() * 0.8,
-              uvi: 5 + Math.random() * 3,
-              rain: Math.random() > 0.7 ? Math.random() * 10 : undefined
-            }))
-          };
-          setFullWeatherData(mockFullWeather);
         }
       }
     } catch (error) {
-      console.error(`获取${weatherLocation.city}天气数据失败:`, error);
+      console.error('获取千葉天气数据失败:', error);
       // 如果API调用失败，使用模拟数据
       const mockWeather: WeatherApiData = {
         temperature: 22,
@@ -335,104 +196,14 @@ export default function OutfitAssistantPage() {
         windSpeed: 3.2,
         pressure: 1013,
         visibility: 10000,
-        city: weatherLocation.city,
+        city: '千葉',
         country: 'JP',
         icon: '01d',
         description: '晴'
       };
       setWeatherData(mockWeather);
-      
-      // 设置模拟的完整天气数据
-      const mockFullWeather: OneCallResponse = {
-        lat: weatherLocation.lat,
-        lon: weatherLocation.lon,
-        timezone: 'Asia/Tokyo',
-        timezone_offset: 32400,
-        current: {
-          dt: Math.floor(Date.now() / 1000),
-          sunrise: Math.floor(Date.now() / 1000) - 3600,
-          sunset: Math.floor(Date.now() / 1000) + 3600,
-          temp: 22,
-          feels_like: 23,
-          pressure: 1013,
-          humidity: 65,
-          dew_point: 15,
-          uvi: 5,
-          clouds: 0,
-          visibility: 10000,
-          wind_speed: 3.2,
-          wind_deg: 180,
-          wind_gust: 5.1,
-          weather: [{
-            id: 800,
-            main: 'Clear',
-            description: '晴',
-            icon: '01d'
-          }]
-        },
-        hourly: Array.from({ length: 24 }, (_, i) => ({
-          dt: Math.floor(Date.now() / 1000) + i * 3600,
-          temp: 22 + Math.sin(i / 3) * 5,
-          feels_like: 23 + Math.sin(i / 3) * 5,
-          pressure: 1013,
-          humidity: 65,
-          dew_point: 15,
-          uvi: Math.max(0, 5 - Math.abs(i - 12) / 3),
-          clouds: Math.max(0, 20 - Math.abs(i - 12)),
-          visibility: 10000,
-          wind_speed: 3.2 + Math.random() * 2,
-          wind_deg: 180 + Math.random() * 40 - 20,
-          wind_gust: 5.1 + Math.random() * 2,
-          weather: [{
-            id: 800,
-            main: 'Clear',
-            description: '晴',
-            icon: i < 6 || i > 18 ? '01n' : '01d'
-          }],
-          pop: Math.max(0, Math.sin(i / 6) * 0.3)
-        })),
-        daily: Array.from({ length: 7 }, (_, i) => ({
-          dt: Math.floor(Date.now() / 1000) + i * 86400,
-          sunrise: Math.floor(Date.now() / 1000) + i * 86400 - 3600,
-          sunset: Math.floor(Date.now() / 1000) + i * 86400 + 3600,
-          moonrise: 0,
-          moonset: 0,
-          moon_phase: 0.5,
-          temp: {
-            day: 22 + Math.random() * 10 - 5,
-            min: 15 + Math.random() * 8 - 4,
-            max: 25 + Math.random() * 10 - 5,
-            night: 18 + Math.random() * 8 - 4,
-            eve: 21 + Math.random() * 8 - 4,
-            morn: 17 + Math.random() * 6 - 3
-          },
-          feels_like: {
-            day: 23 + Math.random() * 10 - 5,
-            night: 19 + Math.random() * 8 - 4,
-            eve: 22 + Math.random() * 8 - 4,
-            morn: 18 + Math.random() * 6 - 3
-          },
-          pressure: 1013 + Math.random() * 20 - 10,
-          humidity: 65 + Math.random() * 20 - 10,
-          dew_point: 15 + Math.random() * 5 - 2.5,
-          wind_speed: 3.2 + Math.random() * 3,
-          wind_deg: Math.random() * 360,
-          wind_gust: 5.1 + Math.random() * 3,
-          weather: [{
-            id: 800 + Math.floor(Math.random() * 100),
-            main: ['Clear', 'Clouds', 'Rain'][Math.floor(Math.random() * 3)],
-            description: ['晴', '多云', '小雨'][Math.floor(Math.random() * 3)],
-            icon: ['01d', '02d', '03d', '04d', '09d', '10d'][Math.floor(Math.random() * 6)]
-          }],
-          clouds: Math.random() * 50,
-          pop: Math.random() * 0.8,
-          uvi: 5 + Math.random() * 3,
-          rain: Math.random() > 0.7 ? Math.random() * 10 : undefined
-        }))
-      };
-      setFullWeatherData(mockFullWeather);
     }
-  }, [weatherLocation])
+  }, [])
 
   // 生成穿搭推荐
   const generateOutfitRecommendation = useCallback(async () => {
@@ -842,19 +613,6 @@ export default function OutfitAssistantPage() {
     }
   };
 
-  // 处理打开修改位置模态框
-  const openLocationModal = () => {
-    setNewLocation({ ...weatherLocation });
-    setShowLocationModal(true);
-  };
-
-  // 处理保存新的位置
-  const handleSaveLocation = () => {
-    setWeatherLocation({ ...newLocation });
-    setShowLocationModal(false);
-  };
-
-
   // 处理重定向逻辑
   useEffect(() => {
     if (!loading && !user) {
@@ -883,6 +641,28 @@ export default function OutfitAssistantPage() {
       generateOutfitRecommendation()
     }
   }, [weatherData, wardrobeItems, activeTab, generateOutfitRecommendation])
+
+  // 添加定时刷新天气数据的功能
+  // 当用户切换到推荐标签页时，确保获取最新的天气数据
+  // 同时设置定时器定期更新天气数据，确保信息是最新的
+  useEffect(() => {
+    if (activeTab !== 'recommend' || !user) return;
+
+    // 立即获取一次数据
+    fetchWeatherData();
+
+    // 设置定时器，每30分钟刷新一次天气数据
+    const intervalId = setInterval(() => {
+      console.log('定时刷新天气数据...');
+      fetchWeatherData();
+    }, 30 * 60 * 1000); // 30分钟
+
+    // 清理定时器
+    return () => {
+      console.log('清理天气数据刷新定时器');
+      clearInterval(intervalId);
+    };
+  }, [activeTab, user, fetchWeatherData]);
 
   // 显示加载状态
   if (loading) {
@@ -959,19 +739,11 @@ export default function OutfitAssistantPage() {
           {activeTab === 'recommend' && (
             <div>
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-cream-text-dark">今日穿搭推荐</h2>
-                  <button
-                    onClick={openLocationModal}
-                    className="text-sm bg-cream-accent hover:bg-cream-accent-hover text-white px-3 py-1 rounded-lg transition duration-300"
-                  >
-                    修改位置
-                  </button>
-                </div>
+                <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日穿搭推荐</h2>
                 
                 {weatherData && (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-2">今日天气 - {weatherData.city}</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-2">今日天气</h3>
                     <div className="flex items-center">
                       <div className="text-3xl font-bold text-cream-text-dark mr-4">
                         {weatherData.temperature}°C
@@ -1028,118 +800,69 @@ export default function OutfitAssistantPage() {
                     <div className="mb-4">
                       <h4 className="font-medium text-cream-text-dark mb-2">一周天气预报</h4>
                       <div className="space-y-2">
-                        {fullWeatherData.daily && fullWeatherData.daily.length > 0 ? (
-                          fullWeatherData.daily.slice(0, 7).map((day, index) => {
-                            const date = new Date(day.dt * 1000);
-                            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-                            const dayName = index === 0 ? '今天' : weekdays[date.getDay()];
-                            
-                            return (
-                              <div key={day.dt} className="flex items-center justify-between p-2 bg-cream-card rounded border border-cream-border">
-                                <div className="w-16 text-cream-text-dark font-medium">{dayName}</div>
-                                <div className="flex items-center">
-                                  <span className="text-cream-text mr-2">{day.weather[0].description}</span>
-                                  {day.weather[0].icon && (
-                                    <img 
-                                      src={`https://openweathermap.org/img/wn/${day.weather[0].icon}.png`} 
-                                      alt={day.weather[0].description} 
-                                      className="w-6 h-6 mr-2"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                                <div className="w-24 text-right">
-                                  <span className="text-cream-text-dark font-medium">{day.temp.max.toFixed(0)}°</span>
-                                  <span className="text-cream-text-light">/{day.temp.min.toFixed(0)}°</span>
-                                </div>
-                                <div className="w-20 text-right text-cream-text">
-                                  风力: {day.wind_speed.toFixed(1)} m/s
-                                </div>
-                                <div className="w-16 text-right text-cream-text">
-                                  降水: {(day.pop * 100).toFixed(0)}%
-                                </div>
+                        {fullWeatherData.daily.slice(0, 7).map((day, index) => {
+                          const date = new Date(day.dt * 1000);
+                          const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                          const dayName = index === 0 ? '今天' : weekdays[date.getDay()];
+                          
+                          return (
+                            <div key={day.dt} className="flex items-center justify-between p-2 bg-cream-card rounded border border-cream-border">
+                              <div className="w-16 text-cream-text-dark font-medium">{dayName}</div>
+                              <div className="flex items-center">
+                                <span className="text-cream-text mr-2">{day.weather[0].description}</span>
+                                {day.weather[0].icon && (
+                                  <img 
+                                    src={`https://openweathermap.org/img/wn/${day.weather[0].icon}.png`} 
+                                    alt={day.weather[0].description} 
+                                    className="w-6 h-6 mr-2"
+                                  />
+                                )}
                               </div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-cream-text-light text-center py-2">暂无一周天气预报数据</div>
-                        )}
+                              <div className="w-24 text-right">
+                                <span className="text-cream-text-dark font-medium">{day.temp.max.toFixed(0)}°</span>
+                                <span className="text-cream-text-light">/{day.temp.min.toFixed(0)}°</span>
+                              </div>
+                              <div className="w-20 text-right text-cream-text">
+                                风力: {day.wind_speed.toFixed(1)} m/s
+                              </div>
+                              <div className="w-16 text-right text-cream-text">
+                                降水: {(day.pop * 100).toFixed(0)}%
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                     
                     {/* 小时天气预报 */}
                     <div>
                       <h4 className="font-medium text-cream-text-dark mb-2">24小时预报</h4>
-                      {fullWeatherData.hourly && fullWeatherData.hourly.length > 0 ? (
-                        <div className="flex overflow-x-auto pb-2 space-x-2">
-                          {fullWeatherData.hourly.slice(0, 24).map((hour, index) => {
-                            const date = new Date(hour.dt * 1000);
-                            const time = date.getHours();
-                            
-                            return (
-                              <div key={hour.dt} className="flex flex-col items-center p-2 bg-cream-card rounded border border-cream-border min-w-[60px]">
-                                <div className="text-cream-text text-xs">
-                                  {index === 0 ? '现在' : `${time}时`}
-                                </div>
-                                {hour.weather[0].icon && (
-                                  <img 
-                                    src={`https://openweathermap.org/img/wn/${hour.weather[0].icon}.png`} 
-                                    alt={hour.weather[0].description} 
-                                    className="w-8 h-8 my-1"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                    }}
-                                  />
-                                )}
-                                <div className="text-cream-text-dark font-medium">
-                                  {hour.temp.toFixed(0)}°
-                                </div>
-                                <div className="text-cream-text text-xs">
-                                  风: {hour.wind_speed.toFixed(1)} m/s
-                                </div>
+                      <div className="flex overflow-x-auto pb-2 space-x-2">
+                        {fullWeatherData.hourly.slice(0, 24).map((hour, index) => {
+                          const date = new Date(hour.dt * 1000);
+                          const time = date.getHours();
+                          
+                          return (
+                            <div key={hour.dt} className="flex flex-col items-center p-2 bg-cream-card rounded border border-cream-border min-w-[60px]">
+                              <div className="text-cream-text text-xs">
+                                {index === 0 ? '现在' : `${time}时`}
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-cream-text-light text-center py-2">暂无小时天气预报数据</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {/* 如果没有完整天气数据，显示基本天气信息 */}
-                {!fullWeatherData && weatherData && (
-                  <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-3">天气信息 - {weatherData.city}</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">温度:</span>
-                        <span className="text-cream-text-dark font-medium">{weatherData.temperature}°C</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">天气状况:</span>
-                        <span className="text-cream-text-dark font-medium">{weatherData.condition}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">湿度:</span>
-                        <span className="text-cream-text-dark font-medium">{weatherData.humidity}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">风速:</span>
-                        <span className="text-cream-text-dark font-medium">{weatherData.windSpeed} m/s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">气压:</span>
-                        <span className="text-cream-text-dark font-medium">{weatherData.pressure} hPa</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-cream-text">能见度:</span>
-                        <span className="text-cream-text-dark font-medium">{(weatherData.visibility / 1000).toFixed(1)} km</span>
+                              {hour.weather[0].icon && (
+                                <img 
+                                  src={`https://openweathermap.org/img/wn/${hour.weather[0].icon}.png`} 
+                                  alt={hour.weather[0].description} 
+                                  className="w-8 h-8 my-1"
+                                />
+                              )}
+                              <div className="text-cream-text-dark font-medium">
+                                {hour.temp.toFixed(0)}°
+                              </div>
+                              <div className="text-cream-text text-xs">
+                                风: {hour.wind_speed.toFixed(1)} m/s
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1995,6 +1718,19 @@ export default function OutfitAssistantPage() {
                           </div>
                         )}
                         
+                        {item.image_url ? (
+                          <img 
+                            src={item.image_url} 
+                            alt={item.name} 
+                            className="w-full h-24 object-cover rounded mb-2"
+                          />
+                        ) : (
+                          <div className="bg-cream-border w-full h-24 rounded mb-2 flex items-center justify-center">
+                            <span className="text-cream-text-light text-xs">暂无图片</span>
+                          </div>
+                        )}
+                        <h4 className="font-medium text-cream-text-dark text-sm truncate">{item.name}</h4>
+                        <p className="text-cream-text-light text-xs">{item.category}</p>
                       </div>
                     ))}
                   </div>
@@ -2016,88 +1752,6 @@ export default function OutfitAssistantPage() {
                       className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
                     >
                       完成选择
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 修改位置模态框 */}
-          {showLocationModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-cream-text-dark">修改天气位置</h3>
-                    <button 
-                      onClick={() => setShowLocationModal(false)}
-                      className="text-cream-text-light hover:text-cream-text-dark"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">城市名称</label>
-                      <input
-                        type="text"
-                        value={newLocation.city}
-                        onChange={(e) => setNewLocation(prev => ({ ...prev, city: e.target.value }))}
-                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入城市名称"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-cream-text-dark mb-1">纬度</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={newLocation.lat}
-                          onChange={(e) => setNewLocation(prev => ({ ...prev, lat: parseFloat(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                          placeholder="请输入纬度"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-cream-text-dark mb-1">经度</label>
-                        <input
-                          type="number"
-                          step="any"
-                          value={newLocation.lon}
-                          onChange={(e) => setNewLocation(prev => ({ ...prev, lon: parseFloat(e.target.value) || 0 }))}
-                          className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                          placeholder="请输入经度"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-cream-bg rounded-lg p-3 border border-cream-border">
-                      <h4 className="font-medium text-cream-text-dark mb-2">提示</h4>
-                      <p className="text-cream-text text-sm">
-                        请输入您所在城市的名称以及对应的经纬度坐标，系统将根据这些信息获取当地的天气数据。
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button 
-                      onClick={() => setShowLocationModal(false)}
-                      className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
-                    >
-                      取消
-                    </button>
-                    <button 
-                      onClick={handleSaveLocation}
-                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
-                    >
-                      保存
                     </button>
                   </div>
                 </div>
