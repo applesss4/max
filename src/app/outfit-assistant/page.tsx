@@ -85,6 +85,18 @@ export default function OutfitAssistantPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [selectedPreview, setSelectedPreview] = useState<OutfitPreview | null>(null)
   const [showWardrobeSelector, setShowWardrobeSelector] = useState(false)
+  // 新增状态用于天气地址功能
+  const [weatherLocation, setWeatherLocation] = useState({
+    city: 'Chiba',
+    lat: 35.6073,
+    lon: 140.1065
+  })
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [newLocation, setNewLocation] = useState({
+    city: 'Chiba',
+    lat: 35.6073,
+    lon: 140.1065
+  })
 
   // 获取用户衣柜物品
   const fetchWardrobeItems = useCallback(async () => {
@@ -128,33 +140,31 @@ export default function OutfitAssistantPage() {
   // 获取天气数据（真实的API调用）
   const fetchWeatherData = useCallback(async () => {
     try {
-      // 获取日本千叶的天气数据
-      console.log('開始获取日本千葉天气数据...');
+      // 获取指定位置的天气数据
+      console.log(`開始获取${weatherLocation.city}天气数据...`);
       // 方法1: 使用城市名获取天气
-      const weather = await getWeatherByCity('Chiba');
+      const weather = await getWeatherByCity(weatherLocation.city);
       
       if (weather) {
-        console.log('成功获取千葉天气数据:', weather);
+        console.log(`成功获取${weatherLocation.city}天气数据:`, weather);
         setWeatherData(weather);
         
         // 获取完整的天气预报数据
         try {
-          // 使用千葉の经纬度获取完整天气数据
-          // 千葉の经纬度大约为: 纬度35.6073, 经度140.1065
-          const fullWeather = await getOneCallWeather(35.6073, 140.1065);
+          const fullWeather = await getOneCallWeather(weatherLocation.lat, weatherLocation.lon);
           if (fullWeather) {
-            console.log('成功获取千葉完整天气数据:', fullWeather);
+            console.log(`成功获取${weatherLocation.city}完整天气数据:`, fullWeather);
             setFullWeatherData(fullWeather);
           } else {
-            console.warn('无法获取千葉完整天气数据');
+            console.warn(`无法获取${weatherLocation.city}完整天气数据`);
             // 如果OneCall API失败，尝试使用其他方式获取更多天气信息
-            const fallbackWeather = await getWeatherByCoordinates(35.6073, 140.1065);
+            const fallbackWeather = await getWeatherByCoordinates(weatherLocation.lat, weatherLocation.lon);
             if (fallbackWeather) {
-              console.log('通过经纬度获取千葉天气数据作为备选:', fallbackWeather);
+              console.log(`通过经纬度获取${weatherLocation.city}天气数据作为备选:`, fallbackWeather);
               // 这里可以设置一些默认的完整天气数据
               setFullWeatherData({
-                lat: 35.6073,
-                lon: 140.1065,
+                lat: weatherLocation.lat,
+                lon: weatherLocation.lon,
                 timezone: 'Asia/Tokyo',
                 timezone_offset: 32400,
                 current: {
@@ -185,31 +195,30 @@ export default function OutfitAssistantPage() {
             }
           }
         } catch (error) {
-          console.error('获取千葉完整天气数据失败:', error);
+          console.error(`获取${weatherLocation.city}完整天气数据失败:`, error);
         }
       } else {
-        console.warn('无法获取千葉天气数据，尝试使用经纬度获取...');
+        console.warn(`无法获取${weatherLocation.city}天气数据，尝试使用经纬度获取...`);
         // 方法2: 如果城市名获取失败，使用经纬度获取
-        // 日本千葉の经纬度大约为: 纬度35.6073, 经度140.1065
-        const weatherByCoords = await getWeatherByCoordinates(35.6073, 140.1065);
+        const weatherByCoords = await getWeatherByCoordinates(weatherLocation.lat, weatherLocation.lon);
         if (weatherByCoords) {
-          console.log('通过经纬度成功获取千葉天气数据:', weatherByCoords);
+          console.log(`通过经纬度成功获取${weatherLocation.city}天气数据:`, weatherByCoords);
           setWeatherData(weatherByCoords);
           
           // 获取完整的天气预报数据
           try {
-            const fullWeather = await getOneCallWeather(35.6073, 140.1065);
+            const fullWeather = await getOneCallWeather(weatherLocation.lat, weatherLocation.lon);
             if (fullWeather) {
-              console.log('成功获取千葉完整天气数据:', fullWeather);
+              console.log(`成功获取${weatherLocation.city}完整天气数据:`, fullWeather);
               setFullWeatherData(fullWeather);
             } else {
-              console.warn('无法获取千葉完整天气数据');
+              console.warn(`无法获取${weatherLocation.city}完整天气数据`);
             }
           } catch (error) {
-            console.error('获取千葉完整天气数据失败:', error);
+            console.error(`获取${weatherLocation.city}完整天气数据失败:`, error);
           }
         } else {
-          console.warn('无法通过经纬度获取千葉天气数据，使用模拟数据');
+          console.warn(`无法通过经纬度获取${weatherLocation.city}天气数据，使用模拟数据`);
           // 如果API调用失败，使用模拟数据
           const mockWeather: WeatherApiData = {
             temperature: 22,
@@ -218,7 +227,7 @@ export default function OutfitAssistantPage() {
             windSpeed: 3.2,
             pressure: 1013,
             visibility: 10000,
-            city: '千葉',
+            city: weatherLocation.city,
             country: 'JP',
             icon: '01d',
             description: '晴'
@@ -227,8 +236,8 @@ export default function OutfitAssistantPage() {
           
           // 设置模拟的完整天气数据
           const mockFullWeather: OneCallResponse = {
-            lat: 35.6073,
-            lon: 140.1065,
+            lat: weatherLocation.lat,
+            lon: weatherLocation.lon,
             timezone: 'Asia/Tokyo',
             timezone_offset: 32400,
             current: {
@@ -317,7 +326,7 @@ export default function OutfitAssistantPage() {
         }
       }
     } catch (error) {
-      console.error('获取千葉天气数据失败:', error);
+      console.error(`获取${weatherLocation.city}天气数据失败:`, error);
       // 如果API调用失败，使用模拟数据
       const mockWeather: WeatherApiData = {
         temperature: 22,
@@ -326,7 +335,7 @@ export default function OutfitAssistantPage() {
         windSpeed: 3.2,
         pressure: 1013,
         visibility: 10000,
-        city: '千葉',
+        city: weatherLocation.city,
         country: 'JP',
         icon: '01d',
         description: '晴'
@@ -335,8 +344,8 @@ export default function OutfitAssistantPage() {
       
       // 设置模拟的完整天气数据
       const mockFullWeather: OneCallResponse = {
-        lat: 35.6073,
-        lon: 140.1065,
+        lat: weatherLocation.lat,
+        lon: weatherLocation.lon,
         timezone: 'Asia/Tokyo',
         timezone_offset: 32400,
         current: {
@@ -423,7 +432,7 @@ export default function OutfitAssistantPage() {
       };
       setFullWeatherData(mockFullWeather);
     }
-  }, [])
+  }, [weatherLocation])
 
   // 生成穿搭推荐
   const generateOutfitRecommendation = useCallback(async () => {
@@ -833,6 +842,19 @@ export default function OutfitAssistantPage() {
     }
   };
 
+  // 处理打开修改位置模态框
+  const openLocationModal = () => {
+    setNewLocation({ ...weatherLocation });
+    setShowLocationModal(true);
+  };
+
+  // 处理保存新的位置
+  const handleSaveLocation = () => {
+    setWeatherLocation({ ...newLocation });
+    setShowLocationModal(false);
+  };
+
+
   // 处理重定向逻辑
   useEffect(() => {
     if (!loading && !user) {
@@ -937,11 +959,19 @@ export default function OutfitAssistantPage() {
           {activeTab === 'recommend' && (
             <div>
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
-                <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日穿搭推荐</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-cream-text-dark">今日穿搭推荐</h2>
+                  <button
+                    onClick={openLocationModal}
+                    className="text-sm bg-cream-accent hover:bg-cream-accent-hover text-white px-3 py-1 rounded-lg transition duration-300"
+                  >
+                    修改位置
+                  </button>
+                </div>
                 
                 {weatherData && (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-2">今日天气</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-2">今日天气 - {weatherData.city}</h3>
                     <div className="flex items-center">
                       <div className="text-3xl font-bold text-cream-text-dark mr-4">
                         {weatherData.temperature}°C
@@ -1085,7 +1115,7 @@ export default function OutfitAssistantPage() {
                 {/* 如果没有完整天气数据，显示基本天气信息 */}
                 {!fullWeatherData && weatherData && (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-3">天气信息</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-3">天气信息 - {weatherData.city}</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex justify-between">
                         <span className="text-cream-text">温度:</span>
@@ -1965,19 +1995,6 @@ export default function OutfitAssistantPage() {
                           </div>
                         )}
                         
-                        {item.image_url ? (
-                          <img 
-                            src={item.image_url} 
-                            alt={item.name} 
-                            className="w-full h-24 object-cover rounded mb-2"
-                          />
-                        ) : (
-                          <div className="bg-cream-border w-full h-24 rounded mb-2 flex items-center justify-center">
-                            <span className="text-cream-text-light text-xs">暂无图片</span>
-                          </div>
-                        )}
-                        <h4 className="font-medium text-cream-text-dark text-sm truncate">{item.name}</h4>
-                        <p className="text-cream-text-light text-xs">{item.category}</p>
                       </div>
                     ))}
                   </div>
@@ -1999,6 +2016,88 @@ export default function OutfitAssistantPage() {
                       className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
                     >
                       完成选择
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 修改位置模态框 */}
+          {showLocationModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md">
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-cream-text-dark">修改天气位置</h3>
+                    <button 
+                      onClick={() => setShowLocationModal(false)}
+                      className="text-cream-text-light hover:text-cream-text-dark"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">城市名称</label>
+                      <input
+                        type="text"
+                        value={newLocation.city}
+                        onChange={(e) => setNewLocation(prev => ({ ...prev, city: e.target.value }))}
+                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                        placeholder="请输入城市名称"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-cream-text-dark mb-1">纬度</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={newLocation.lat}
+                          onChange={(e) => setNewLocation(prev => ({ ...prev, lat: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                          placeholder="请输入纬度"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-cream-text-dark mb-1">经度</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={newLocation.lon}
+                          onChange={(e) => setNewLocation(prev => ({ ...prev, lon: parseFloat(e.target.value) || 0 }))}
+                          className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                          placeholder="请输入经度"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-cream-bg rounded-lg p-3 border border-cream-border">
+                      <h4 className="font-medium text-cream-text-dark mb-2">提示</h4>
+                      <p className="text-cream-text text-sm">
+                        请输入您所在城市的名称以及对应的经纬度坐标，系统将根据这些信息获取当地的天气数据。
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 flex justify-end space-x-3">
+                    <button 
+                      onClick={() => setShowLocationModal(false)}
+                      className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                    >
+                      取消
+                    </button>
+                    <button 
+                      onClick={handleSaveLocation}
+                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
+                    >
+                      保存
                     </button>
                   </div>
                 </div>
