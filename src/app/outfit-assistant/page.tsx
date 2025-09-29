@@ -356,19 +356,23 @@ export default function OutfitAssistantPage() {
     if (!user || !newItem.name || !newItem.category) return
 
     try {
+      console.log('开始添加衣物，用户ID:', user.id);
       let imageUrl = newItem.image_url
       
       // 如果有选择文件，先上传文件
       if (imageFile) {
+        console.log('有文件需要上传:', imageFile.name);
         setIsUploading(true)
         const { publicUrl, error } = await uploadFile(imageFile)
         setIsUploading(false)
         
         if (error) {
+          console.error('文件上传失败:', error);
           throw new Error('文件上传失败: ' + error.message)
         }
         
         imageUrl = publicUrl || ''
+        console.log('文件上传成功，URL:', imageUrl);
       }
 
       const itemToAdd = {
@@ -378,11 +382,16 @@ export default function OutfitAssistantPage() {
         notes: newItem.tags.join(', ') // 标签保存到notes字段
       }
 
+      console.log('准备添加的衣物数据:', itemToAdd);
       // @ts-ignore
       const { data, error } = await addWardrobeItem(itemToAdd)
 
-      if (error) throw error
+      if (error) {
+        console.error('添加衣物失败:', error);
+        throw error;
+      }
       if (data) {
+        console.log('衣物添加成功:', data);
         // 更新本地状态
         setWardrobeItems(prev => [data, ...prev])
         setShowAddModal(false)
@@ -567,6 +576,13 @@ export default function OutfitAssistantPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0])
+    }
+  }
+
+  // 处理编辑时的文件选择
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setEditingImageFile(e.target.files[0])
     }
   }
 
@@ -1212,7 +1228,7 @@ export default function OutfitAssistantPage() {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={handleFileChange}
+                        onChange={(e) => handleFileChange && handleFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
                       <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
@@ -1404,7 +1420,7 @@ export default function OutfitAssistantPage() {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={handleEditFileChange}
+                        onChange={(e) => handleEditFileChange && handleEditFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
                       <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
