@@ -219,6 +219,7 @@ img {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 0.5rem;
+    width: 100%;
   }
   
   .rain-chart-item {
@@ -248,6 +249,25 @@ img {
   
   .weather-chart-container::-webkit-scrollbar-thumb:hover, .rain-chart-container::-webkit-scrollbar-thumb:hover {
     background: #a89383;
+  }
+  
+  /* 降雨提醒容器优化 */
+  .rain-reminder-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 强制滚动条显示 */
+  .force-scrollbar::-webkit-scrollbar {
+    -webkit-appearance: none;
+    height: 8px;
+  }
+  
+  .force-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.5);
+    -webkit-box-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
   }
 }
 

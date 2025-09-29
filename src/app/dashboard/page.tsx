@@ -206,12 +206,20 @@ export default function DashboardPage() {
     const maxPop = Math.max(...rainData.map(data => data.pop), 100);
     
     return (
-      <div className="mt-3">
+      <div className="mt-3 w-full">
         <h3 className="font-medium text-blue-800 text-sm mb-2">未来24小时降雨概率</h3>
-        <div className="rain-chart-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex items-end h-20 gap-1 pb-2" style={{ minWidth: 'max-content', width: 'max-content' }}>
+        <div className="w-full overflow-x-auto force-scrollbar" style={{ 
+          WebkitOverflowScrolling: 'touch',
+          padding: '0 0 10px 0'
+        }}>
+          <div className="flex items-end h-20 gap-1" style={{ 
+            minWidth: 'max-content',
+            padding: '0 2px'
+          }}>
             {rainData.map((data, index) => (
-              <div key={index} className="flex flex-col items-center flex-shrink-0 rain-chart-item">
+              <div key={index} className="flex flex-col items-center flex-shrink-0" style={{
+                width: '40px'
+              }}>
                 <div className="text-blue-700 text-xs mb-1 whitespace-nowrap">{data.pop}%</div>
                 <div 
                   className="w-full bg-blue-400 rounded-t transition-all duration-300 hover:bg-blue-500"
@@ -371,10 +379,10 @@ export default function DashboardPage() {
                 {rainInfo && rainInfo.length > 0 && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-200">
                     <div className="flex items-start">
-                      <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
                       </svg>
-                      <div className="flex-1">
+                      <div className="w-full overflow-hidden">
                         <h3 className="font-medium text-blue-800 text-sm">降雨提醒</h3>
                         <RainChart rainData={rainInfo} />
                       </div>
