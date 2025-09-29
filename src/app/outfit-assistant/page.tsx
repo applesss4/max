@@ -18,6 +18,7 @@ interface WardrobeItem {
   color: string | null
   season: string | null
   image_url: string | null
+  image_urls: string[] | null
   purchase_date: string | null
   brand: string | null
   notes: string | null
@@ -44,7 +45,7 @@ interface OutfitHistoryItem {
 }
 
 // 定义标签类型
-type Tag = '商务' | '休闲' | '運動' | '正式' | '日常' | '约会' | '度假' | '居家';
+type Tag = '商务' | '休闲' | '運動' | '正式' | '日常' | '约会' | '度假' | '居家' | 'ビジネス' | 'リラックス' | 'スポーツ' | 'フォーマル' | 'デイリー' | 'デート' | '休暇' | 'ホーム';
 
 export default function OutfitAssistantPage() {
   const { user, loading } = useAuth()
@@ -258,7 +259,7 @@ export default function OutfitAssistantPage() {
         // 早春晚秋涼爽：推薦稍厚一些の衣物
         const outer = wardrobeItems.filter(item => 
           item.category === '外套' && (item.season === '春' || item.season === '秋' || item.season === '四季') &&
-          (item.notes?.includes('薄外套') || item.notes?.includes('开衫') || item.notes?.includes('风衣'))
+          (item.notes?.includes('薄外套') || item.notes?.includes('開衫') || item.notes?.includes('風衣'))
         ).slice(0, 1)
         
         const inner = wardrobeItems.filter(item => 
@@ -274,7 +275,7 @@ export default function OutfitAssistantPage() {
         // 冬季寒冷：推薦保暖衣物
         const outer = wardrobeItems.filter(item => 
           item.category === '外套' && (item.season === '冬' || item.season === '四季') &&
-          (item.notes?.includes('厚外套') || item.notes?.includes('羽绒服') || item.notes?.includes('大衣'))
+          (item.notes?.includes('厚外套') || item.notes?.includes('羽絨服') || item.notes?.includes('大衣'))
         ).slice(0, 1)
         
         const inner = wardrobeItems.filter(item => 
@@ -284,7 +285,7 @@ export default function OutfitAssistantPage() {
         
         const pants = wardrobeItems.filter(item => 
           item.category === '裤子' && (item.season === '冬' || item.season === '四季') &&
-          (item.notes?.includes('厚') || item.notes?.includes('保暖') || item.notes?.includes('加绒'))
+          (item.notes?.includes('厚') || item.notes?.includes('保暖') || item.notes?.includes('加絨'))
         ).slice(0, 1)
         
         recommendedItems = [...outer, ...inner, ...pants]
@@ -295,7 +296,7 @@ export default function OutfitAssistantPage() {
         // 下雨天推荐雨具
         const rainItems = wardrobeItems.filter(item => 
           item.category === '配飾' && 
-          (item.notes?.includes('雨伞') || item.notes?.includes('雨衣') || item.notes?.includes('防水'))
+          (item.notes?.includes('雨傘') || item.notes?.includes('雨衣') || item.notes?.includes('防水'))
         ).slice(0, 2)
         
         recommendedItems = [...recommendedItems, ...rainItems]
@@ -303,7 +304,7 @@ export default function OutfitAssistantPage() {
         // 高湿度天气推荐透气配飾
         const accessories = wardrobeItems.filter(item => 
           item.category === '配飾' && 
-          (item.notes?.includes('透气') || item.notes?.includes('吸汗') || item.notes?.includes('棉质'))
+          (item.notes?.includes('透气') || item.notes?.includes('吸汗') || item.notes?.includes('棉質'))
         ).slice(0, 2)
         
         recommendedItems = [...recommendedItems, ...accessories]
@@ -356,46 +357,46 @@ export default function OutfitAssistantPage() {
     if (!user || !newItem.name || !newItem.category) return
 
     try {
-      console.log('开始添加衣物，用户ID:', user.id);
+      console.log('開始添加衣物，ユーザーID:', user.id);
       let imageUrl = newItem.image_url
       
       // 如果有选择文件，先上传文件
       if (imageFile) {
-        console.log('有文件需要上传:', imageFile.name);
+        console.log('有ファイルが必要:', imageFile.name);
         setIsUploading(true)
         const { publicUrl, error } = await uploadFile(imageFile)
         setIsUploading(false)
         
         if (error) {
-          console.error('文件上传失败:', error);
-          throw new Error('文件上传失败: ' + error.message)
+          console.error('ファイルアップロード失敗:', error);
+          throw new Error('ファイルアップロード失敗: ' + error.message)
         }
         
         imageUrl = publicUrl || ''
-        console.log('文件上传成功，URL:', imageUrl);
+        console.log('ファイルアップロード成功，URL:', imageUrl);
       }
 
       const itemToAdd = {
         ...newItem,
-        image_url: imageUrl, // 使用上传后的URL或用户输入的URL
+        image_url: imageUrl, // 使用アップロード後のURLまたはユーザー入力のURL
         user_id: user.id,
-        notes: newItem.tags.join(', ') // 标签保存到notes字段
+        notes: newItem.tags.join(', ') // タグをnotesフィールドに保存
       }
 
-      console.log('准备添加的衣物数据:', itemToAdd);
+      console.log('追加する衣物データ:', itemToAdd);
       // @ts-ignore
       const { data, error } = await addWardrobeItem(itemToAdd)
 
       if (error) {
-        console.error('添加衣物失败:', error);
+        console.error('衣物追加失敗:', error);
         throw error;
       }
       if (data) {
-        console.log('衣物添加成功:', data);
-        // 更新本地状态
+        console.log('衣物追加成功:', data);
+        // ローカル状態を更新
         setWardrobeItems(prev => [data, ...prev])
         setShowAddModal(false)
-        // 重置表单
+        // フォームをリセット
         setNewItem({
           name: '',
           category: '',
@@ -407,29 +408,29 @@ export default function OutfitAssistantPage() {
           notes: '',
           tags: []
         })
-        setImageFile(null) // 重置文件选择
+        setImageFile(null) // ファイル選択をリセット
       }
     } catch (error) {
-      console.error('衣物添加失败:', error)
-      alert('衣物添加失败，请重試')
+      console.error('衣物追加失敗:', error)
+      alert('衣物追加失敗、もう一度試してください')
     }
   }
 
-  // 衣物编辑
+  // 衣物編集
   const handleEditWardrobeItem = async () => {
     if (!editingItem || !editingItem.name || !editingItem.category) return
 
     try {
       let imageUrl = editingItem.image_url
       
-      // 如果有选择新文件，先上传文件
+      // 新しいファイルを選択した場合、先にファイルをアップロード
       if (editingImageFile) {
         setIsUploading(true)
         const { publicUrl, error } = await uploadFile(editingImageFile)
         setIsUploading(false)
         
         if (error) {
-          throw new Error('文件上传失败: ' + error.message)
+          throw new Error('ファイルアップロード失敗: ' + error.message)
         }
         
         imageUrl = publicUrl || ''
@@ -437,8 +438,8 @@ export default function OutfitAssistantPage() {
 
       const itemToUpdate = {
         ...editingItem,
-        image_url: imageUrl, // 使用上传后的URL或原有的URL
-        notes: editingItem.tags.join(', ') // 标签保存到notes字段
+        image_url: imageUrl, // 使用アップロード後のURLまたは既存のURL
+        notes: editingItem.tags.join(', ') // タグをnotesフィールドに保存
       }
 
       // @ts-ignore
@@ -446,7 +447,7 @@ export default function OutfitAssistantPage() {
 
       if (error) throw error
       if (data) {
-        // 更新本地状态
+        // ローカル状態を更新
         // @ts-ignore
         setWardrobeItems(prev => 
           // @ts-ignore
@@ -454,15 +455,15 @@ export default function OutfitAssistantPage() {
         )
         setShowEditModal(false)
         setEditingItem(null)
-        setEditingImageFile(null) // 重置文件选择
+        setEditingImageFile(null) // ファイル選択をリセット
       }
     } catch (error) {
-      console.error('衣物编辑失败:', error)
-      alert('衣物編集失败，请重試')
+      console.error('衣物編集失敗:', error)
+      alert('衣物編集失敗、もう一度試してください')
     }
   }
 
-  // 衣物删除
+  // 衣物削除
   const handleDeleteWardrobeItem = async () => {
     if (!itemToDelete) return
 
@@ -472,19 +473,19 @@ export default function OutfitAssistantPage() {
 
       if (error) throw error
       
-      // 更新本地状态
+      // ローカル状態を更新
       setWardrobeItems(prev => 
         prev.filter(item => item.id !== itemToDelete)
       )
       setShowDeleteConfirm(false)
       setItemToDelete(null)
     } catch (error) {
-      console.error('衣物删除失败:', error)
-      alert('衣物删除失败，请重試')
+      console.error('衣物削除失敗:', error)
+      alert('衣物削除失敗、もう一度試してください')
     }
   }
 
-  // 穿搭历史保存
+  // 穿搭履歴保存
   const handleSaveOutfit = async () => {
     if (!user || !recommendation) return
 
@@ -502,11 +503,11 @@ export default function OutfitAssistantPage() {
       if (error) throw error
       
       if (data) {
-        alert('穿搭已保存到历史记录')
+        alert('穿搭が履歴に保存されました')
       }
     } catch (error) {
-      console.error('穿搭历史保存失败:', error)
-      alert('穿搭历史保存失敗，请重試')
+      console.error('穿搭履歴保存失敗:', error)
+      alert('穿搭履歴保存失敗、もう一度試してください')
     }
   }
 
@@ -522,13 +523,13 @@ export default function OutfitAssistantPage() {
     return { totalItems, categoryCounts };
   };
 
-  // 标签分布取得
+  // タグ分布取得
   const getTagDistribution = () => {
     const tagCounts: Record<string, number> = {};
     
     wardrobeItems.forEach(item => {
-      // 假定各item有tags属性，这里根据实际データ结构调整
-      const tags = item.notes?.split(',') || []; // 临时将notes字段保存标签
+      // 假定各itemにtags属性がある場合、ここでは実際のデータ構造に合わせて調整
+      const tags = item.notes?.split(',') || []; // 一時的にnotesフィールドにタグを保存
       tags.forEach(tag => {
         const trimmedTag = tag.trim();
         if (trimmedTag) {
@@ -537,18 +538,18 @@ export default function OutfitAssistantPage() {
       });
     });
     
-    // 轉換为数组并排序
+    // 配列に変換してソート
     const tagArray = Object.entries(tagCounts)
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5); // 只取前5个标签
+      .slice(0, 5); // 上位5つのタグのみ取得
     
     return tagArray;
   };
 
-  // 打開編集モーダル
+  // 編集モーダルを開く
   const openEditModal = (item: WardrobeItem) => {
-    // 为现有物品添加标签属性
+    // 既存のアイテムにtags属性を追加
     const itemWithTags = {
       ...item,
       tags: (item.notes?.split(',').map(tag => tag.trim()) || []) as Tag[]
@@ -557,13 +558,13 @@ export default function OutfitAssistantPage() {
     setShowEditModal(true);
   }
 
-  // 打開削除確認
+  // 削除確認を開く
   const openDeleteConfirm = (itemId: string) => {
     setItemToDelete(itemId)
     setShowDeleteConfirm(true)
   }
 
-  // 表单输入变化处理（添加）
+  // フォーム入力変更処理（追加）
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setNewItem(prev => ({
@@ -572,14 +573,14 @@ export default function OutfitAssistantPage() {
     }))
   }
 
-  // 处理文件选择
+  // ファイル選択処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0])
     }
   }
 
-  // 处理编辑时的文件选择
+  // 編集時のファイル選択処理
   const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setEditingImageFile(e.target.files[0])
@@ -640,6 +641,19 @@ export default function OutfitAssistantPage() {
     }
   }, [user, fetchWardrobeItems, fetchWeatherData])
 
+  // URLパラメータをチェックし、editパラメータが存在する場合は編集モーダルを開く
+  useEffect(() => {
+    const editItemId = new URLSearchParams(window.location.search).get('edit');
+    if (editItemId && wardrobeItems.length > 0) {
+      const itemToEdit = wardrobeItems.find(item => item.id === editItemId);
+      if (itemToEdit) {
+        openEditModal(itemToEdit);
+      }
+      // URLパラメータをクリア
+      router.replace('/outfit-assistant');
+    }
+  }, [wardrobeItems, router]);
+
   // 穿搭履歴取得
   useEffect(() => {
     if (user && activeTab === 'history') {
@@ -660,7 +674,7 @@ export default function OutfitAssistantPage() {
       <div className="min-h-screen flex items-center justify-center bg-cream-bg">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent"></div>
-          <p className="mt-2 text-cream-text-dark">读取中...</p>
+          <p className="mt-2 text-cream-text-dark">読み取り中...</p>
         </div>
       </div>
     )
@@ -678,32 +692,32 @@ export default function OutfitAssistantPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-cream-bg">
-        {/* 顶部导航 */}
+        {/* トップナビゲーション */}
         <header className="bg-cream-card shadow-sm border-b border-cream-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16 items-center">
               <div className="flex items-center">
-                <h1 className="text-xl font-semibold text-cream-text-dark">智能穿搭助理</h1>
+                <h1 className="text-xl font-semibold text-cream-text-dark">スマートコーディングアシスタント</h1>
               </div>
               <button
                 onClick={() => router.push('/dashboard')}
                 className="text-cream-text-light hover:text-cream-text-dark transition duration-300"
               >
-                返回首页
+                ホームに戻る
               </button>
             </div>
           </div>
         </header>
 
-        {/* 主要内容区域 */}
+        {/* メインコンテンツエリア */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* 标签导航 */}
+          {/* タブナビゲーション */}
           <div className="flex border-b border-cream-border mb-8">
             <button
               className={`py-2 px-4 font-medium text-sm ${activeTab === 'recommend' ? 'text-cream-accent border-b-2 border-cream-accent' : 'text-cream-text-light hover:text-cream-text-dark'}`}
               onClick={() => setActiveTab('recommend')}
             >
-              今日推荐
+              今日のおすすめ
             </button>
             <button
               className={`py-2 px-4 font-medium text-sm ${activeTab === 'wardrobe' ? 'text-cream-accent border-b-2 border-cream-accent' : 'text-cream-text-light hover:text-cream-text-dark'}`}
@@ -715,74 +729,74 @@ export default function OutfitAssistantPage() {
               className={`py-2 px-4 font-medium text-sm ${activeTab === 'history' ? 'text-cream-accent border-b-2 border-cream-accent' : 'text-cream-text-light hover:text-cream-text-dark'}`}
               onClick={() => setActiveTab('history')}
             >
-              穿搭历史
+              穿搭履歴
             </button>
           </div>
 
-          {/* 今日推荐标签页 */}
+          {/* 今日のおすすめタブ */}
           {activeTab === 'recommend' && (
             <div>
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border mb-8">
-                <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日推荐</h2>
+                <h2 className="text-xl font-semibold text-cream-text-dark mb-4">今日のおすすめ</h2>
                 
                 {weatherData && (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-2">今日天气</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-2">今日の天気</h3>
                     <div className="flex items-center">
                       <div className="text-3xl font-bold text-cream-text-dark mr-4">
                         {weatherData.temperature}°C
                       </div>
                       <div>
-                        <p className="text-cream-text">天气: {weatherData.condition}</p>
+                        <p className="text-cream-text">天気: {weatherData.condition}</p>
                         <p className="text-cream-text-light text-sm">湿度: {weatherData.humidity}%</p>
                       </div>
                     </div>
                   </div>
                 )}
                 
-                {/* 完整天气情報表示 */}
+                {/* 完全な天気情報表示 */}
                 {fullWeatherData && (
                   <div className="bg-cream-bg rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-cream-text-dark mb-3">详细天气情報</h3>
+                    <h3 className="font-medium text-cream-text-dark mb-3">詳細な天気情報</h3>
                     
-                    {/* 当前天气详情 */}
+                    {/* 現在の天気詳細 */}
                     <div className="mb-4 p-3 bg-cream-card rounded border border-cream-border">
-                      <h4 className="font-medium text-cream-text-dark mb-2">当前天气详情</h4>
+                      <h4 className="font-medium text-cream-text-dark mb-2">現在の天気詳細</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-cream-text">体感温度:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.feels_like.toFixed(1)}°C</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">气压:</span>
+                          <span className="text-cream-text">気圧:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.pressure} hPa</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">风速:</span>
+                          <span className="text-cream-text">風速:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.wind_speed} m/s</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">风向:</span>
+                          <span className="text-cream-text">風向:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.wind_deg}°</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">视野:</span>
+                          <span className="text-cream-text">視界:</span>
                           <span className="text-cream-text-dark font-medium">{(fullWeatherData.current.visibility / 1000).toFixed(1)} km</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">紫外线指数:</span>
+                          <span className="text-cream-text">紫外線指数:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.uvi}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-cream-text">云量:</span>
+                          <span className="text-cream-text">雲量:</span>
                           <span className="text-cream-text-dark font-medium">{fullWeatherData.current.clouds}%</span>
                         </div>
                       </div>
                     </div>
                     
-                    {/* 周预报 */}
+                    {/* 週予報 */}
                     <div className="mb-4">
-                      <h4 className="font-medium text-cream-text-dark mb-2">周预报</h4>
+                      <h4 className="font-medium text-cream-text-dark mb-2">週予報</h4>
                       <div className="space-y-2">
                         {fullWeatherData.daily.slice(0, 7).map((day, index) => {
                           const date = new Date(day.dt * 1000);
@@ -807,7 +821,7 @@ export default function OutfitAssistantPage() {
                                 <span className="text-cream-text-light">/{day.temp.min.toFixed(0)}°</span>
                               </div>
                               <div className="w-20 text-right text-cream-text">
-                                风力: {day.wind_speed.toFixed(1)} m/s
+                                風力: {day.wind_speed.toFixed(1)} m/s
                               </div>
                               <div className="w-16 text-right text-cream-text">
                                 降水: {(day.pop * 100).toFixed(0)}%
@@ -818,9 +832,9 @@ export default function OutfitAssistantPage() {
                       </div>
                     </div>
                     
-                    {/* 24小时预报 */}
+                    {/* 24時間予報 */}
                     <div>
-                      <h4 className="font-medium text-cream-text-dark mb-2">24小时预报</h4>
+                      <h4 className="font-medium text-cream-text-dark mb-2">24時間予報</h4>
                       <div className="flex overflow-x-auto pb-2 space-x-2">
                         {fullWeatherData.hourly.slice(0, 24).map((hour, index) => {
                           const date = new Date(hour.dt * 1000);
@@ -829,7 +843,7 @@ export default function OutfitAssistantPage() {
                           return (
                             <div key={hour.dt} className="flex flex-col items-center p-2 bg-cream-card rounded border border-cream-border min-w-[60px]">
                               <div className="text-cream-text text-xs">
-                                {index === 0 ? '现在' : `${time}时`}
+                                {index === 0 ? '現在' : `${time}時`}
                               </div>
                               {hour.weather[0].icon && (
                                 <img 
@@ -842,7 +856,7 @@ export default function OutfitAssistantPage() {
                                 {hour.temp.toFixed(0)}°
                               </div>
                               <div className="text-cream-text text-xs">
-                                风: {hour.wind_speed.toFixed(1)} m/s
+                                風: {hour.wind_speed.toFixed(1)} m/s
                               </div>
                             </div>
                           );
@@ -856,7 +870,7 @@ export default function OutfitAssistantPage() {
                   <div className="flex justify-center items-center py-12">
                     <div className="text-center">
                       <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mb-2"></div>
-                      <p className="text-cream-text-dark">正在生成推荐...</p>
+                      <p className="text-cream-text-dark">おすすめを生成しています...</p>
                     </div>
                   </div>
                 ) : recommendation ? (
@@ -876,12 +890,12 @@ export default function OutfitAssistantPage() {
                             />
                           ) : (
                             <div className="bg-cream-border w-full h-32 rounded mb-2 flex items-center justify-center">
-                              <span className="text-cream-text-light">暂无图片</span>
+                              <span className="text-cream-text-light">画像なし</span>
                             </div>
                           )}
                           <h4 className="font-medium text-cream-text-dark text-sm">{item.name}</h4>
                           <p className="text-cream-text-light text-xs">{item.category}</p>
-                          {item.color && <p className="text-cream-text-light text-xs">颜色: {item.color}</p>}
+                          {item.color && <p className="text-cream-text-light text-xs">色: {item.color}</p>}
                         </div>
                       ))}
                     </div>
@@ -891,24 +905,24 @@ export default function OutfitAssistantPage() {
                         onClick={() => setActiveTab('wardrobe')}
                         className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                       >
-                        查看衣物
+                        衣物を見る
                       </button>
                       <button 
                         onClick={handleSaveOutfit}
                         className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                       >
-                        保存历史
+                        履歴に保存
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-cream-text-light">暂无推荐。请先添加衣物。</p>
+                    <p className="text-cream-text-light">おすすめがありません。まずは衣物を追加してください。</p>
                     <button 
                       onClick={() => setActiveTab('wardrobe')}
                       className="mt-4 bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     >
-                      添加衣物
+                      衣物を追加
                     </button>
                   </div>
                 )}
@@ -916,13 +930,13 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 衣物管理标签页 */}
+          {/* 衣物管理タブ */}
           {activeTab === 'wardrobe' && (
             <div>
-              {/* 统計情報カード */}
+              {/* 統計情報カード */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border">
-                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">衣物统计</h3>
+                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">衣物統計</h3>
                   <div className="flex items-center">
                     <div className="bg-cream-accent text-white rounded-full w-12 h-12 flex items-center justify-center mr-4">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -930,14 +944,14 @@ export default function OutfitAssistantPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-cream-text-light text-sm">衣物总数</p>
+                      <p className="text-cream-text-light text-sm">衣物総数</p>
                       <p className="text-2xl font-bold text-cream-text-dark">{wardrobeStats.totalItems}</p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border">
-                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">分类分布</h3>
+                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">分類分布</h3>
                   <div className="space-y-2">
                     {Object.entries(wardrobeStats.categoryCounts).map(([category, count]) => (
                       <div key={category} className="flex justify-between">
@@ -949,7 +963,7 @@ export default function OutfitAssistantPage() {
                 </div>
                 
                 <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border">
-                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">标签分布</h3>
+                  <h3 className="text-lg font-semibold text-cream-text-dark mb-4">タグ分布</h3>
                   <div className="space-y-2">
                     {tagDistribution.map(({ tag, count }) => (
                       <div key={tag} className="flex justify-between">
@@ -968,7 +982,7 @@ export default function OutfitAssistantPage() {
                     className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     onClick={() => setShowAddModal(true)}
                   >
-                    添加衣物
+                    衣物を追加
                   </button>
                 </div>
                 
@@ -976,16 +990,23 @@ export default function OutfitAssistantPage() {
                   <div className="flex justify-center items-center py-12">
                     <div className="text-center">
                       <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mb-2"></div>
-                      <p className="text-cream-text-dark">正在读取衣物...</p>
+                      <p className="text-cream-text-dark">衣物を読み取っています...</p>
                     </div>
                   </div>
                 ) : wardrobeItems.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {wardrobeItems.map((item) => (
-                      <div key={item.id} className="bg-cream-bg rounded-lg p-4 border border-cream-border relative">
+                      <div 
+                        key={item.id} 
+                        className="bg-cream-bg rounded-lg p-4 border border-cream-border relative cursor-pointer hover:shadow-md transition-shadow duration-300"
+                        onClick={() => router.push(`/outfit-assistant/detail?id=${item.id}`)}
+                      >
                         <div className="absolute top-2 right-2 flex space-x-1">
                           <button 
-                            onClick={() => openEditModal(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(item);
+                            }}
                             className="text-cream-text-light hover:text-cream-accent p-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -993,7 +1014,10 @@ export default function OutfitAssistantPage() {
                             </svg>
                           </button>
                           <button 
-                            onClick={() => openDeleteConfirm(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteConfirm(item.id);
+                            }}
                             className="text-cream-text-light hover:text-red-500 p-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1010,26 +1034,26 @@ export default function OutfitAssistantPage() {
                           />
                         ) : (
                           <div className="bg-cream-border w-full h-32 rounded mb-2 flex items-center justify-center">
-                            <span className="text-cream-text-light">暂无图片</span>
+                            <span className="text-cream-text-light">画像なし</span>
                           </div>
                         )}
                         
                         <h4 className="font-medium text-cream-text-dark text-sm">{item.name}</h4>
                         <p className="text-cream-text-light text-xs">{item.category}</p>
-                        {item.color && <p className="text-cream-text-light text-xs">颜色: {item.color}</p>}
-                        {item.season && <p className="text-cream-text-light text-xs">季节: {item.season}</p>}
-                        {item.brand && <p className="text-cream-text-light text-xs">品牌: {item.brand}</p>}
+                        {item.color && <p className="text-cream-text-light text-xs">色: {item.color}</p>}
+                        {item.season && <p className="text-cream-text-light text-xs">季節: {item.season}</p>}
+                        {item.brand && <p className="text-cream-text-light text-xs">ブランド: {item.brand}</p>}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <p className="text-cream-text-light mb-4">暂无衣物</p>
+                    <p className="text-cream-text-light mb-4">衣物がありません</p>
                     <button 
                       onClick={() => setShowAddModal(true)}
                       className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     >
-                      添加第一件衣物
+                      最初の衣物を追加
                     </button>
                   </div>
                 )}
@@ -1037,17 +1061,17 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 穿搭历史标签页 */}
+          {/* 穿搭履歴タブ */}
           {activeTab === 'history' && (
             <div>
               <div className="bg-cream-card rounded-2xl shadow-sm p-6 border border-cream-border">
-                <h2 className="text-xl font-semibold text-cream-text-dark mb-6">穿搭历史</h2>
+                <h2 className="text-xl font-semibold text-cream-text-dark mb-6">穿搭履歴</h2>
                 
                 {loadingHistory ? (
                   <div className="flex justify-center items-center py-12">
                     <div className="text-center">
                       <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cream-accent mb-2"></div>
-                      <p className="text-cream-text-dark">正在读取历史...</p>
+                      <p className="text-cream-text-dark">履歴を読み取っています...</p>
                     </div>
                   </div>
                 ) : outfitHistory.length > 0 ? (
@@ -1065,7 +1089,7 @@ export default function OutfitAssistantPage() {
                             </h3>
                             {historyItem.weather && (
                               <p className="text-cream-text-light text-sm">
-                                天气: {JSON.parse(historyItem.weather).condition}, 
+                                天気: {JSON.parse(historyItem.weather).condition}, 
                                 温度: {JSON.parse(historyItem.weather).temperature}°C
                               </p>
                             )}
@@ -1089,12 +1113,12 @@ export default function OutfitAssistantPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <p className="text-cream-text-light mb-4">暂无穿搭历史</p>
+                    <p className="text-cream-text-light mb-4">穿搭履歴がありません</p>
                     <button 
                       onClick={() => setActiveTab('recommend')}
                       className="bg-cream-accent hover:bg-cream-accent-hover text-white px-4 py-2 rounded-lg transition duration-300"
                     >
-                      生成今日推荐
+                      今日のおすすめを生成
                     </button>
                   </div>
                 )}
@@ -1102,14 +1126,14 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 添加衣物模态框 */}
+          {/* 衣物追加モーダル */}
           {showAddModal && (
             <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowAddModal(false)}></div>
               <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-cream-text-dark">添加衣物</h3>
+                    <h3 className="text-xl font-semibold text-cream-text-dark">衣物を追加</h3>
                     <button 
                       onClick={() => setShowAddModal(false)}
                       className="text-cream-text-light hover:text-cream-text-dark"
@@ -1129,48 +1153,48 @@ export default function OutfitAssistantPage() {
                         value={newItem.name}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入衣物名称"
+                        placeholder="衣物名称を入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">分类 *</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">分類 *</label>
                       <select
                         name="category"
                         value={newItem.category}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       >
-                        <option value="">请选择分类</option>
+                        <option value="">分類を選択してください</option>
                         <option value="上衣">上衣</option>
-                        <option value="裤子">裤子</option>
-                        <option value="外套">外套</option>
-                        <option value="鞋子">鞋子</option>
-                        <option value="配飾">配飾</option>
+                        <option value="パンツ">パンツ</option>
+                        <option value="アウター">アウター</option>
+                        <option value="シューズ">シューズ</option>
+                        <option value="アクセサリー">アクセサリー</option>
                       </select>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">颜色</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">色</label>
                       <input
                         type="text"
                         name="color"
                         value={newItem.color}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入颜色"
+                        placeholder="色を入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">季节</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">季節</label>
                       <select
                         name="season"
                         value={newItem.season}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       >
-                        <option value="">请选择季节</option>
+                        <option value="">季節を選択してください</option>
                         <option value="春">春</option>
                         <option value="夏">夏</option>
                         <option value="秋">秋</option>
@@ -1180,17 +1204,17 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">标签</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">タグ</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {(['商务', '休闲', '運動', '正式', '日常', '约会', '度假', '居家'] as Tag[]).map(tag => (
+                        {['ビジネス', 'リラックス', 'スポーツ', 'フォーマル', 'デイリー', 'デート', '休暇', 'ホーム'].map(tag => (
                           <span 
                             key={tag}
                             className={`text-xs px-2 py-1 rounded cursor-pointer ${
-                              newItem.tags.includes(tag)
+                              newItem.tags.includes(tag as unknown as Tag)
                                 ? 'bg-cream-accent text-white'
                                 : 'bg-cream-bg border border-cream-border text-cream-text hover:bg-cream-accent hover:text-white'
                             }`}
-                            onClick={() => handleTagChange(tag)}
+                            onClick={() => handleTagChange(tag as unknown as Tag)}
                           >
                             #{tag}
                           </span>
@@ -1208,12 +1232,12 @@ export default function OutfitAssistantPage() {
                           }));
                         }}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入标签，用逗号分隔"
+                        placeholder="タグを入力してください（カンマ区切り）"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">购买日期</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">購入日</label>
                       <input
                         type="date"
                         name="purchase_date"
@@ -1224,37 +1248,37 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片上传</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">画像アップロード</label>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleFileChange && handleFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
-                      <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
+                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 形式をサポートしています。最大 5MB</p>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">或输入图片链接</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">または画像リンクを入力</label>
                       <input
                         type="text"
                         name="image_url"
                         value={newItem.image_url}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入图片链接"
+                        placeholder="画像リンクを入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">备注</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">備考</label>
                       <textarea
                         name="notes"
                         value={newItem.notes}
                         onChange={handleInputChange}
                         rows={3}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入备注"
+                        placeholder="備考を入力してください"
                       ></textarea>
                     </div>
                   </div>
@@ -1265,14 +1289,14 @@ export default function OutfitAssistantPage() {
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                       disabled={isUploading}
                     >
-                      取消
+                      キャンセル
                     </button>
                     <button 
                       onClick={handleAddWardrobeItem}
                       className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300 disabled:opacity-50"
                       disabled={isUploading}
                     >
-                      {isUploading ? '上传中...' : '添加'}
+                      {isUploading ? 'アップロード中...' : '追加'}
                     </button>
                   </div>
                 </div>
@@ -1280,14 +1304,14 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 编辑衣物模态框 */}
+          {/* 衣物編集モーダル */}
           {showEditModal && editingItem && (
             <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowEditModal(false)}></div>
               <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-cream-text-dark">编辑衣物</h3>
+                    <h3 className="text-xl font-semibold text-cream-text-dark">衣物を編集</h3>
                     <button 
                       onClick={() => setShowEditModal(false)}
                       className="text-cream-text-light hover:text-cream-text-dark"
@@ -1307,48 +1331,48 @@ export default function OutfitAssistantPage() {
                         value={editingItem.name}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入衣物名称"
+                        placeholder="衣物名称を入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">分类 *</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">分類 *</label>
                       <select
                         name="category"
                         value={editingItem.category}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       >
-                        <option value="">请选择分类</option>
+                        <option value="">分類を選択してください</option>
                         <option value="上衣">上衣</option>
-                        <option value="裤子">裤子</option>
-                        <option value="外套">外套</option>
-                        <option value="鞋子">鞋子</option>
-                        <option value="配飾">配飾</option>
+                        <option value="パンツ">パンツ</option>
+                        <option value="アウター">アウター</option>
+                        <option value="シューズ">シューズ</option>
+                        <option value="アクセサリー">アクセサリー</option>
                       </select>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">颜色</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">色</label>
                       <input
                         type="text"
                         name="color"
                         value={editingItem.color || ''}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入颜色"
+                        placeholder="色を入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">季节</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">季節</label>
                       <select
                         name="season"
                         value={editingItem.season || ''}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       >
-                        <option value="">请选择季节</option>
+                        <option value="">季節を選択してください</option>
                         <option value="春">春</option>
                         <option value="夏">夏</option>
                         <option value="秋">秋</option>
@@ -1358,17 +1382,17 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">标签</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">タグ</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {(['商务', '休闲', '運動', '正式', '日常', '约会', '度假', '居家'] as Tag[]).map(tag => (
+                        {['ビジネス', 'リラックス', 'スポーツ', 'フォーマル', 'デイリー', 'デート', '休暇', 'ホーム'].map(tag => (
                           <span 
                             key={tag}
                             className={`text-xs px-2 py-1 rounded cursor-pointer ${
-                              editingItem?.tags.includes(tag)
+                              editingItem?.tags.includes(tag as unknown as Tag)
                                 ? 'bg-cream-accent text-white'
                                 : 'bg-cream-bg border border-cream-border text-cream-text hover:bg-cream-accent hover:text-white'
                             }`}
-                            onClick={() => editingItem && handleEditTagChange(tag)}
+                            onClick={() => editingItem && handleEditTagChange(tag as unknown as Tag)}
                           >
                             #{tag}
                           </span>
@@ -1388,24 +1412,24 @@ export default function OutfitAssistantPage() {
                           }
                         }}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入标签，用逗号分隔"
+                        placeholder="タグを入力してください（カンマ区切り）"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">品牌</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">ブランド</label>
                       <input
                         type="text"
                         name="brand"
                         value={editingItem.brand || ''}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入品牌"
+                        placeholder="ブランドを入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">购买日期</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">購入日</label>
                       <input
                         type="date"
                         name="purchase_date"
@@ -1416,20 +1440,20 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片上传</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">画像アップロード</label>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleEditFileChange && handleEditFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
-                      <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
+                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 形式をサポートしています。最大 5MB</p>
                       {editingItem.image_url && (
                         <div className="mt-2">
-                          <p className="text-sm text-cream-text-dark">当前图片:</p>
+                          <p className="text-sm text-cream-text-dark">現在の画像:</p>
                           <img 
                             src={editingItem.image_url} 
-                            alt="当前图片" 
+                            alt="現在の画像" 
                             className="w-16 h-16 object-cover rounded mt-1"
                           />
                         </div>
@@ -1437,26 +1461,26 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">或输入图片链接</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">または画像リンクを入力</label>
                       <input
                         type="text"
                         name="image_url"
                         value={editingItem.image_url || ''}
                         onChange={handleEditInputChange}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入图片链接"
+                        placeholder="画像リンクを入力してください"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">备注</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">備考</label>
                       <textarea
                         name="notes"
                         value={editingItem.notes || ''}
                         onChange={handleEditInputChange}
                         rows={3}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入备注"
+                        placeholder="備考を入力してください"
                       ></textarea>
                     </div>
                   </div>
@@ -1467,14 +1491,14 @@ export default function OutfitAssistantPage() {
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                       disabled={isUploading}
                     >
-                      取消
+                      キャンセル
                     </button>
                     <button 
                       onClick={handleEditWardrobeItem}
                       className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300 disabled:opacity-50"
                       disabled={isUploading}
                     >
-                      {isUploading ? '上传中...' : '保存'}
+                      {isUploading ? 'アップロード中...' : '保存'}
                     </button>
                   </div>
                 </div>
@@ -1482,14 +1506,14 @@ export default function OutfitAssistantPage() {
             </div>
           )}
 
-          {/* 删除确认模态框 */}
+          {/* 削除確認モーダル */}
           {showDeleteConfirm && (
             <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowDeleteConfirm(false)}></div>
               <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold text-cream-text-dark">确认删除</h3>
+                    <h3 className="text-xl font-semibold text-cream-text-dark">削除確認</h3>
                     <button 
                       onClick={() => setShowDeleteConfirm(false)}
                       className="text-cream-text-light hover:text-cream-text-dark"
@@ -1500,20 +1524,20 @@ export default function OutfitAssistantPage() {
                     </button>
                   </div>
                   
-                  <p className="text-cream-text-dark mb-6">确定要删除这件衣物吗？此操作无法撤销。</p>
+                  <p className="text-cream-text-dark mb-6">この衣物を削除しますか？この操作は取り消せません。</p>
                   
                   <div className="flex justify-end space-x-3">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
                     >
-                      取消
+                      キャンセル
                     </button>
                     <button
                       onClick={handleDeleteWardrobeItem}
                       className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
                     >
-                      删除
+                      削除
                     </button>
                   </div>
                 </div>
