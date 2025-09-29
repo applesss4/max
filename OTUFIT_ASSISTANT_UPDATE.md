@@ -26,11 +26,7 @@
 
 ## 更改文件列表
 
-### 1. 新增详情页组件
-- `src/app/outfit-assistant/detail/page.tsx` - 新增衣物详情页组件，支持多图片横向滑动预览
 
-### 2. 更新衣物管理页面
-- `src/app/outfit-assistant/page.tsx` - 为衣物卡片添加点击跳转功能
 
 ### 3. 数据库迁移文件
 - `supabase/migrations/030_add_multiple_images_to_wardrobe_items.sql` - 为wardrobe_items表添加多图片支持
@@ -40,10 +36,7 @@
 - `supabase/migrations/021_add_tags_to_wardrobe_items.sql` - 新增迁移文件，用于向现有表添加[tags](file:///Users/ai/最后版本/src/types/supabase.ts#L158-L158)字段
 
 ### 4. 类型定义文件
-- `src/types/supabase.ts` - 更新[WardrobeItem](file:///Users/ai/最后版本/src/app/outfit-assistant/page.tsx#L18-L29)接口以包含[tags](file:///Users/ai/最后版本/src/types/supabase.ts#L158-L158)字段
-
-### 5. 前端页面文件
-- `src/app/outfit-assistant/page.tsx` - 更新[WardrobeItem](file:///Users/ai/最后版本/src/app/outfit-assistant/page.tsx#L18-L29)接口和相关逻辑以正确使用[tags](file:///Users/ai/最后版本/src/types/supabase.ts#L158-L158)字段
+- `src/types/supabase.ts` - 更新WardrobeItem接口以包含tags字段
 
 ## 部署说明
 1. 应用数据库迁移：

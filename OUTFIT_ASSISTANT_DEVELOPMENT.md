@@ -68,11 +68,7 @@ CREATE TABLE outfit_history (
 ### 3. 服务层
 创建文件: `src/services/outfitService.ts`
 
-### 4. 前端页面
-创建目录: `src/app/outfit-assistant/`
-创建文件: `src/app/outfit-assistant/page.tsx`
-
-### 5. 导航入口
+### 4. 导航入口
 更新文件: `src/app/dashboard/page.tsx`
 
 ## API接口
@@ -153,7 +149,7 @@ CREATE POLICY "用户只能查看自己的穿搭历史" ON outfit_history
    检查 `src/types/supabase.ts` 文件是否包含新表的类型定义
 
 3. 部署前端页面:
-   确保 `src/app/outfit-assistant/page.tsx` 文件存在并正确实现
+   确保相关页面文件存在并正确实现
 
 4. 更新导航入口:
    确保仪表板页面已添加智能穿搭助理的入口

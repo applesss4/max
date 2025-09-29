@@ -272,7 +272,6 @@ export interface Database {
           purchase_date: string | null
           brand: string | null
           notes: string | null
-          luggage_id: string | null
           created_at: string
           updated_at: string
         }
@@ -289,7 +288,6 @@ export interface Database {
           purchase_date?: string | null
           brand?: string | null
           notes?: string | null
-          luggage_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -306,7 +304,6 @@ export interface Database {
           purchase_date?: string | null
           brand?: string | null
           notes?: string | null
-          luggage_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -565,33 +562,6 @@ export interface Database {
           name?: string
           items?: Json | null
           network_image_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      // 添加行李箱表类型定义
-      luggage: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          description: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          description?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          description?: string | null
           created_at?: string
           updated_at?: string
         }
