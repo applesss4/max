@@ -84,7 +84,9 @@ function WardrobeDetailContent() {
   // 处理编辑
   const handleEdit = () => {
     // 跳转到编辑页面，这里可以传递数据或者在编辑页面重新获取
-    router.push(`/outfit-assistant?edit=${itemId}`)
+    if (itemId) {
+      router.push(`/outfit-assistant?edit=${itemId}`)
+    }
   }
 
   // 处理删除

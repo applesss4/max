@@ -9,7 +9,7 @@ import { addWardrobeItem, updateWardrobeItem, deleteWardrobeItem, saveOutfitHist
 import { uploadFile } from '@/services/fileUploadService'
 import { getWeatherByCity, getWeatherByCoordinates, getOneCallWeather, OneCallResponse, WeatherData as WeatherApiData } from '@/services/weatherService'
 
-// 定义类型
+// 定義类型
 interface WardrobeItem {
   id: string
   user_id: string
@@ -44,8 +44,8 @@ interface OutfitHistoryItem {
   updated_at: string
 }
 
-// 定义标签类型
-type Tag = '商务' | '休闲' | '運動' | '正式' | '日常' | '约会' | '度假' | '居家' | 'ビジネス' | 'リラックス' | 'スポーツ' | 'フォーマル' | 'デイリー' | 'デート' | '休暇' | 'ホーム';
+// 定義标签类型
+type Tag = '商务' | '休闲' | '运动' | '正式' | '日常' | '约会' | '度假' | '居家';
 
 export default function OutfitAssistantPage() {
   const { user, loading } = useAuth()
@@ -76,7 +76,9 @@ export default function OutfitAssistantPage() {
     tags: [] as Tag[]
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageFiles, setImageFiles] = useState<File[]>([])
   const [editingImageFile, setEditingImageFile] = useState<File | null>(null)
+  const [editingImageFiles, setEditingImageFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
   // 在模态框打开时阻止页面滚动
@@ -95,6 +97,8 @@ export default function OutfitAssistantPage() {
     return () => {
       document.body.style.overflow = '';
       document.body.style.paddingRight = '';
+      setImageFiles([]);
+      setEditingImageFiles([]);
     };
   }, [showAddModal, showEditModal, showDeleteConfirm]);
 
@@ -167,7 +171,7 @@ export default function OutfitAssistantPage() {
         // 中国北京の经纬度大约为: 緯度39.9042, 経度116.4074
         const weatherByCoords = await getWeatherByCoordinates(39.9042, 116.4074);
         if (weatherByCoords) {
-          console.log('通过经纬度成功获取北京天气データ:', weatherByCoords);
+          console.log('通過经纬度成功获取北京天气データ:', weatherByCoords);
           setWeatherData(weatherByCoords);
           
           // 获取完整的天气预报データ
@@ -181,7 +185,7 @@ export default function OutfitAssistantPage() {
             console.error('获取北京完整天气データ失败:', error);
           }
         } else {
-          console.warn('无法通过经纬度获取北京天气データ，使用模拟データ');
+          console.warn('无法通過经纬度获取北京天气データ，使用模拟データ');
           // 如果API调用失败，使用模拟データ
           const mockWeather: WeatherApiData = {
             temperature: 22,
@@ -359,6 +363,7 @@ export default function OutfitAssistantPage() {
     try {
       console.log('開始添加衣物，ユーザーID:', user.id);
       let imageUrl = newItem.image_url
+      let imageUrls: string[] = []
       
       // 如果有选择文件，先上传文件
       if (imageFile) {
@@ -375,10 +380,29 @@ export default function OutfitAssistantPage() {
         imageUrl = publicUrl || ''
         console.log('ファイルアップロード成功，URL:', imageUrl);
       }
+      
+      // 上传多张图片
+      if (imageFiles.length > 0) {
+        setIsUploading(true)
+        const uploadPromises = imageFiles.map(file => uploadFile(file))
+        const results = await Promise.all(uploadPromises)
+        setIsUploading(false)
+        
+        // 检查是否有上传失败
+        const errors = results.filter(result => result.error)
+        if (errors.length > 0) {
+          throw new Error('部分文件上传失败: ' + errors.map(e => e.error?.message).join(', '))
+        }
+        
+        // 获取所有上传成功的URL
+        imageUrls = results.map(result => result.publicUrl || '').filter(url => url)
+        console.log('多文件上传成功，URLs:', imageUrls);
+      }
 
       const itemToAdd = {
         ...newItem,
         image_url: imageUrl, // 使用アップロード後のURLまたはユーザー入力のURL
+        image_urls: imageUrls.length > 0 ? imageUrls : null, // 存储多张图片URL
         user_id: user.id,
         notes: newItem.tags.join(', ') // タグをnotesフィールドに保存
       }
@@ -409,6 +433,7 @@ export default function OutfitAssistantPage() {
           tags: []
         })
         setImageFile(null) // ファイル選択をリセット
+        setImageFiles([]) // 多文件选择重置
       }
     } catch (error) {
       console.error('衣物追加失敗:', error)
@@ -422,6 +447,7 @@ export default function OutfitAssistantPage() {
 
     try {
       let imageUrl = editingItem.image_url
+      let imageUrls = editingItem.image_urls || []
       
       // 新しいファイルを選択した場合、先にファイルをアップロード
       if (editingImageFile) {
@@ -435,10 +461,30 @@ export default function OutfitAssistantPage() {
         
         imageUrl = publicUrl || ''
       }
+      
+      // 上传多张新图片
+      if (editingImageFiles.length > 0) {
+        setIsUploading(true)
+        const uploadPromises = editingImageFiles.map(file => uploadFile(file))
+        const results = await Promise.all(uploadPromises)
+        setIsUploading(false)
+        
+        // 检查是否有上传失败
+        const errors = results.filter(result => result.error)
+        if (errors.length > 0) {
+          throw new Error('部分文件上传失败: ' + errors.map(e => e.error?.message).join(', '))
+        }
+        
+        // 获取所有上传成功的URL
+        const newImageUrls = results.map(result => result.publicUrl || '').filter(url => url)
+        imageUrls = [...imageUrls, ...newImageUrls]
+        console.log('新增多文件上传成功，URLs:', newImageUrls);
+      }
 
       const itemToUpdate = {
         ...editingItem,
         image_url: imageUrl, // 使用アップロード後のURLまたは既存のURL
+        image_urls: imageUrls.length > 0 ? imageUrls : null, // 更新多张图片URL
         notes: editingItem.tags.join(', ') // タグをnotesフィールドに保存
       }
 
@@ -456,6 +502,7 @@ export default function OutfitAssistantPage() {
         setShowEditModal(false)
         setEditingItem(null)
         setEditingImageFile(null) // ファイル選択をリセット
+        setEditingImageFiles([]) // 多文件选择重置
       }
     } catch (error) {
       console.error('衣物編集失敗:', error)
@@ -579,11 +626,27 @@ export default function OutfitAssistantPage() {
       setImageFile(e.target.files[0])
     }
   }
+  
+  // 多ファイル選択処理
+  const handleMultipleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      setImageFiles(files)
+    }
+  }
 
   // 編集時のファイル選択処理
   const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setEditingImageFile(e.target.files[0])
+    }
+  }
+  
+  // 編集時の多ファイル選択処理
+  const handleEditMultipleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      setEditingImageFiles(files)
     }
   }
 
@@ -644,7 +707,23 @@ export default function OutfitAssistantPage() {
   // URLパラメータをチェックし、editパラメータが存在する場合は編集モーダルを開く
   useEffect(() => {
     const editItemId = new URLSearchParams(window.location.search).get('edit');
-    if (editItemId && wardrobeItems.length > 0) {
+    if (editItemId) {
+      // 如果衣柜物品已经加载，直接查找并打开编辑模态框
+      if (wardrobeItems.length > 0) {
+        const itemToEdit = wardrobeItems.find(item => item.id === editItemId);
+        if (itemToEdit) {
+          openEditModal(itemToEdit);
+        }
+        // URLパラメータをクリア
+        router.replace('/outfit-assistant');
+      }
+    }
+  }, [wardrobeItems, router]);
+  
+  // 处理从详情页跳转回来的编辑请求
+  useEffect(() => {
+    const editItemId = new URLSearchParams(window.location.search).get('edit');
+    if (editItemId && !loadingWardrobe && wardrobeItems.length > 0) {
       const itemToEdit = wardrobeItems.find(item => item.id === editItemId);
       if (itemToEdit) {
         openEditModal(itemToEdit);
@@ -652,7 +731,7 @@ export default function OutfitAssistantPage() {
       // URLパラメータをクリア
       router.replace('/outfit-assistant');
     }
-  }, [wardrobeItems, router]);
+  }, [loadingWardrobe, wardrobeItems, router]);
 
   // 穿搭履歴取得
   useEffect(() => {
@@ -1206,7 +1285,7 @@ export default function OutfitAssistantPage() {
                     <div>
                       <label className="block text-sm font-medium text-cream-text-dark mb-1">タグ</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {['ビジネス', 'リラックス', 'スポーツ', 'フォーマル', 'デイリー', 'デート', '休暇', 'ホーム'].map(tag => (
+                        {['商务', '休闲', '运动', '正式', '日常', '约会', '度假', '居家'].map(tag => (
                           <span 
                             key={tag}
                             className={`text-xs px-2 py-1 rounded cursor-pointer ${
@@ -1248,14 +1327,29 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">画像アップロード</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">主图上传</label>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleFileChange && handleFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
-                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 形式をサポートしています。最大 5MB</p>
+                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 格式，最大 5MB</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">额外图片上传（可选）</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleMultipleFileChange && handleMultipleFileChange(e)}
+                        multiple
+                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                      />
+                      <p className="text-xs text-cream-text-light mt-1">可选择多张图片，JPG, PNG, GIF 格式，每张最大 5MB</p>
+                      {imageFiles.length > 0 && (
+                        <p className="text-xs text-cream-text-dark mt-1">已选择 {imageFiles.length} 张图片</p>
+                      )}
                     </div>
                     
                     <div>
@@ -1384,7 +1478,7 @@ export default function OutfitAssistantPage() {
                     <div>
                       <label className="block text-sm font-medium text-cream-text-dark mb-1">タグ</label>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {['ビジネス', 'リラックス', 'スポーツ', 'フォーマル', 'デイリー', 'デート', '休暇', 'ホーム'].map(tag => (
+                        {['商务', '休闲', '运动', '正式', '日常', '约会', '度假', '居家'].map(tag => (
                           <span 
                             key={tag}
                             className={`text-xs px-2 py-1 rounded cursor-pointer ${
@@ -1440,22 +1534,52 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">画像アップロード</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">主图上传</label>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleEditFileChange && handleEditFileChange(e)}
                         className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
                       />
-                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 形式をサポートしています。最大 5MB</p>
+                      <p className="text-xs text-cream-text-light mt-1">JPG, PNG, GIF 格式，最大 5MB</p>
                       {editingItem.image_url && (
                         <div className="mt-2">
-                          <p className="text-sm text-cream-text-dark">現在の画像:</p>
+                          <p className="text-sm text-cream-text-dark">当前主图:</p>
                           <img 
                             src={editingItem.image_url} 
-                            alt="現在の画像" 
+                            alt="当前主图" 
                             className="w-16 h-16 object-cover rounded mt-1"
                           />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">额外图片上传（可选）</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleEditMultipleFileChange && handleEditMultipleFileChange(e)}
+                        multiple
+                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                      />
+                      <p className="text-xs text-cream-text-light mt-1">可选择多张图片，JPG, PNG, GIF 格式，每张最大 5MB</p>
+                      {editingImageFiles.length > 0 && (
+                        <p className="text-xs text-cream-text-dark mt-1">已选择 {editingImageFiles.length} 张新图片</p>
+                      )}
+                      {editingItem.image_urls && editingItem.image_urls.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm text-cream-text-dark">当前额外图片:</p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {editingItem.image_urls.map((url, index) => (
+                              <img 
+                                key={index}
+                                src={url} 
+                                alt={`额外图片 ${index + 1}`} 
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
