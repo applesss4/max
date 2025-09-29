@@ -20,7 +20,7 @@ const FeatureCard = React.memo(({
 }) => (
   <div 
     onClick={onClick}
-    className="bg-cream-card rounded-xl shadow-sm p-4 border border-cream-border hover:shadow-md transition duration-300 cursor-pointer"
+    className="bg-cream-card rounded-xl shadow-sm p-4 border border-cream-border hover:shadow-md transition duration-300 cursor-pointer flex flex-col h-full feature-card"
   >
     <div className="flex items-center mb-3">
       <div className="bg-cream-border p-1.5 rounded-md mr-2">
@@ -28,8 +28,8 @@ const FeatureCard = React.memo(({
       </div>
       <h3 className="text-md font-medium text-cream-text">{title}</h3>
     </div>
-    <p className="text-cream-text-light text-xs mb-3">{description}</p>
-    <button className="text-xs font-medium text-cream-accent hover:text-cream-accent-hover transition duration-300">
+    <p className="text-cream-text-light text-xs mb-3 flex-grow">{description}</p>
+    <button className="text-xs font-medium text-cream-accent hover:text-cream-accent-hover transition duration-300 mt-auto">
       点击进入 →
     </button>
   </div>
@@ -208,9 +208,9 @@ export default function DashboardPage() {
     return (
       <div className="mt-3">
         <h3 className="font-medium text-blue-800 text-sm mb-2">未来24小时降雨概率</h3>
-        <div className="flex items-end h-20 gap-1">
+        <div className="flex items-end h-20 gap-1 overflow-x-auto pb-2 weather-chart-container">
           {rainData.map((data, index) => (
-            <div key={index} className="flex flex-col items-center flex-1">
+            <div key={index} className="flex flex-col items-center flex-shrink-0 weather-chart-item" style={{ width: '40px' }}>
               <div className="text-blue-700 text-xs mb-1">{data.pop}%</div>
               <div 
                 className="w-full bg-blue-400 rounded-t transition-all duration-300 hover:bg-blue-500"
@@ -226,7 +226,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-cream-bg">
+      <div className="min-h-screen bg-cream-bg dashboard-page-padding">
         {/* 顶部导航栏 */}
         <header className="bg-cream-card shadow-sm border-b border-cream-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -287,7 +287,7 @@ export default function DashboardPage() {
         {/* 主内容区域 */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* 天气信息展示区域 */}
-          <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
+          <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6 dashboard-weather-card-padding">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-xl font-bold text-cream-text-dark">今日天气</h2>
               <button 
@@ -392,7 +392,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold text-cream-text-dark mb-5">功能模块</h2>
             
             {/* 功能卡片网格 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
               {featureCards.map((card, index) => (
                 <FeatureCard
                   key={index}

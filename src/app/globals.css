@@ -194,6 +194,22 @@ img {
   .grid-gap-compact {
     gap: 0.25rem;
   }
+  
+  /* 天气图表移动端优化 */
+  .weather-chart-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .weather-chart-item {
+    min-width: 35px;
+    flex-shrink: 0;
+  }
+  
+  /* 功能卡片移动端优化 */
+  .feature-card {
+    min-height: 140px;
+  }
 }
 
 .text-compact {
@@ -207,6 +223,16 @@ img {
     font-size: 0.65rem;
     line-height: 0.85rem;
   }
+  
+  /* 调整天气页面的内边距 */
+  .weather-page-padding {
+    padding: 1rem;
+  }
+  
+  /* 调整天气卡片的内边距 */
+  .weather-card-padding {
+    padding: 1rem;
+  }
 }
 
 .p-compact {
@@ -218,6 +244,16 @@ img {
   .p-compact {
     padding: 0.15rem;
   }
+  
+  /* 调整仪表盘页面的内边距 */
+  .dashboard-page-padding {
+    padding: 1rem;
+  }
+  
+  /* 调整天气卡片的内边距 */
+  .dashboard-weather-card-padding {
+    padding: 1rem;
+  }
 }
 
 .h-compact-image {
@@ -228,6 +264,12 @@ img {
 @media (max-width: 768px) {
   .h-compact-image {
     height: 4rem;
+  }
+  
+  /* 减小天气图标大小 */
+  .weather-icon-small {
+    width: 2rem;
+    height: 2rem;
   }
 }
 
@@ -264,6 +306,11 @@ img {
   img {
     max-width: 100%;
     height: auto;
+  }
+  
+  /* 天气页面响应式调整 */
+  .weather-hourly-item {
+    min-width: 50px;
   }
 }
 

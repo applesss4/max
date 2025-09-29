@@ -73,7 +73,7 @@ export default function TodayWeatherPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen weather-page-padding">
       {/* 顶部导航栏 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">今日天气 - {city}</h1>
@@ -110,7 +110,7 @@ export default function TodayWeatherPage() {
       </div>
       
       {weatherData && (
-        <div className="mb-8 p-4 border rounded">
+        <div className="mb-8 p-4 border rounded weather-card-padding">
           <h2 className="text-xl font-semibold mb-3">当前天气 - {weatherData.city}</h2>
           <p>温度: {weatherData.temperature}°C</p>
           <p>天气状况: {weatherData.condition}</p>
@@ -120,7 +120,7 @@ export default function TodayWeatherPage() {
       )}
 
       {fullWeatherData ? (
-        <div className="p-4 border rounded">
+        <div className="p-4 border rounded weather-card-padding">
           <h2 className="text-xl font-semibold mb-3">详细天气预报</h2>
           
           {fullWeatherData.current && (
@@ -155,7 +155,7 @@ export default function TodayWeatherPage() {
                           <img 
                             src={`https://openweathermap.org/img/wn/${day.weather[0].icon}.png`} 
                             alt={day.weather[0].description} 
-                            className="w-6 h-6 mr-2"
+                            className="w-6 h-6 mr-2 weather-icon-small"
                           />
                         )}
                       </div>
@@ -179,13 +179,13 @@ export default function TodayWeatherPage() {
           {fullWeatherData.hourly && fullWeatherData.hourly.length > 0 && (
             <div>
               <h3 className="text-lg font-medium mb-2">24小时预报</h3>
-              <div className="flex overflow-x-auto pb-2 space-x-2">
+              <div className="flex overflow-x-auto pb-2 space-x-2 weather-chart-container">
                 {fullWeatherData.hourly.slice(0, 24).map((hour: any, index: number) => {
                   const date = new Date(hour.dt * 1000)
                   const time = date.getHours()
                   
                   return (
-                    <div key={hour.dt} className="flex flex-col items-center p-2 bg-gray-100 rounded min-w-[60px]">
+                    <div key={hour.dt} className="flex flex-col items-center p-2 bg-gray-100 rounded weather-hourly-item">
                       <div className="text-xs">
                         {index === 0 ? '现在' : `${time}时`}
                       </div>
@@ -193,10 +193,10 @@ export default function TodayWeatherPage() {
                         <img 
                           src={`https://openweathermap.org/img/wn/${hour.weather[0].icon}.png`} 
                           alt={hour.weather[0].description} 
-                          className="w-8 h-8 my-1"
+                          className="w-8 h-8 my-1 weather-icon-small"
                         />
                       )}
-                      <div className="font-medium">
+                      <div className="font-medium text-sm">
                         {hour.temp.toFixed(0)}°
                       </div>
                       <div className="text-xs">
@@ -210,7 +210,7 @@ export default function TodayWeatherPage() {
           )}
         </div>
       ) : !loading && (
-        <div className="p-4 border rounded">
+        <div className="p-4 border rounded weather-card-padding">
           <h2 className="text-xl font-semibold mb-3">详细天气预报</h2>
           <p>暂无详细天气预报数据</p>
         </div>
