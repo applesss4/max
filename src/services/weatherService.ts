@@ -89,7 +89,7 @@ interface ZipCodeResponse {
   country: string;
 }
 
-// OneCall API 响应接口 (当前天气和预报数据)
+// OneCall API 响应接口 (当前天气和预报数据) - 使用3.0版本
 export interface OneCallResponse {
   lat: number;
   lon: number;
@@ -182,120 +182,6 @@ export interface OneCallResponse {
   }[];
 }
 
-// Time Machine API 响应接口 (历史数据)
-interface TimeMachineResponse {
-  lat: number;
-  lon: number;
-  timezone: string;
-  timezone_offset: number;
-  data: {
-    dt: number;
-    sunrise: number;
-    sunset: number;
-    temp: number;
-    feels_like: number;
-    pressure: number;
-    humidity: number;
-    dew_point: number;
-    uvi: number;
-    clouds: number;
-    visibility: number;
-    wind_speed: number;
-    wind_deg: number;
-    wind_gust: number;
-    weather: {
-      id: number;
-      main: string;
-      description: string;
-      icon: string;
-    }[];
-  }[];
-}
-
-// Day Summary API 响应接口 (每日聚合数据)
-interface DaySummaryResponse {
-  lat: number;
-  lon: number;
-  timezone: string;
-  timezone_offset: number;
-  date: number;
-  data: {
-    temp: {
-      min: number;
-      max: number;
-      mean: number;
-    };
-    weather: {
-      main: string;
-      description: string;
-    }[];
-  };
-}
-
-// Overview API 响应接口 (天气概览)
-interface OverviewResponse {
-  lat: number;
-  lon: number;
-  timezone: string;
-  timezone_offset: number;
-  current: {
-    dt: number;
-    sunrise: number;
-    sunset: number;
-    temp: number;
-    feels_like: number;
-    pressure: number;
-    humidity: number;
-    dew_point: number;
-    uvi: number;
-    clouds: number;
-    visibility: number;
-    wind_speed: number;
-    wind_deg: number;
-    weather: {
-      id: number;
-      main: string;
-      description: string;
-      icon: string;
-    }[];
-  };
-  today: {
-    temp: {
-      min: number;
-      max: number;
-    };
-    weather: {
-      main: string;
-      description: string;
-    }[];
-    sunrise: number;
-    sunset: number;
-  };
-  daily: {
-    dt: number;
-    temp: {
-      min: number;
-      max: number;
-    };
-    weather: {
-      main: string;
-      description: string;
-    }[];
-    pop: number;
-  }[];
-  overview: string; // 人类可读的天气摘要
-  preferences: {
-    clothing: {
-      upper: string;
-      lower: string;
-      accessories: string[];
-    };
-    umbrella: boolean;
-    sunscreen: boolean;
-    indoors: boolean;
-  };
-}
-
 /**
  * 获取指定城市的天气数据
  * @param city 城市名
@@ -319,7 +205,7 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     // 对城市名称进行URL编码，避免特殊字符问题
     const encodedCity = encodeURIComponent(city);
     
-    // 构建API请求URL
+    // 构建API请求URL - 使用2.5版本以确保兼容性
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedCity}&appid=${apiKey}&units=metric&lang=zh_cn`;
     
     console.log(`正在获取城市 "${city}" 的天气数据...`);
@@ -344,6 +230,12 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     // 检查API响应码
     if (data.cod !== 200) {
       console.error('OpenWeather API返回错误:', data.message || `状态码: ${data.cod}`);
+      return null;
+    }
+    
+    // 检查数据完整性
+    if (!data.main || !data.weather || !data.weather[0]) {
+      console.error('OpenWeather API返回的数据不完整:', data);
       return null;
     }
     
@@ -373,6 +265,10 @@ export const getWeatherByCity = async (city: string): Promise<WeatherData | null
     if (error.response) {
       // 服务器响应了错误状态码
       console.error('API响应错误:', error.response.status, error.response.data);
+      // 如果是404错误，可能是城市名称不正确
+      if (error.response.status === 404) {
+        console.error('请检查城市名称是否正确，或API端点是否可用');
+      }
     } else if (error.request) {
       // 请求已发出但没有收到响应
       console.error('网络请求错误:', error.request);
@@ -401,7 +297,7 @@ export const getWeatherByCoordinates = async (lat: number, lon: number): Promise
       return null;
     }
 
-    // 构建API请求URL
+    // 构建API请求URL - 使用2.5版本以确保兼容性
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
     
     console.log(`正在获取坐标 (${lat}, ${lon}) 的天气数据...`);
@@ -421,6 +317,12 @@ export const getWeatherByCoordinates = async (lat: number, lon: number): Promise
     // 检查API响应码
     if (data.cod !== 200) {
       console.error('OpenWeather API返回错误:', data.message || `状态码: ${data.cod}`);
+      return null;
+    }
+    
+    // 检查数据完整性
+    if (!data.main || !data.weather || !data.weather[0]) {
+      console.error('OpenWeather API返回的数据不完整:', data);
       return null;
     }
     
@@ -612,7 +514,7 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
       return null;
     }
 
-    // 构建API请求URL
+    // 构建API请求URL - 使用3.0版本
     const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn&exclude=minutely`;
     
     console.log('构建的OneCall API URL:', url);
@@ -649,6 +551,11 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
     if (error.response) {
       // 服务器响应了错误状态码
       console.error('API响应错误:', error.response.status, error.response.data);
+      // 如果是404错误，可能是API端点不可用
+      if (error.response.status === 404) {
+        console.error('OneCall API 3.0版本可能需要付费订阅才能访问');
+        console.error('请检查您的OpenWeather账户订阅计划');
+      }
     } else if (error.request) {
       // 请求已发出但没有收到响应
       console.error('网络请求错误:', error.request);
@@ -657,215 +564,7 @@ export const getOneCallWeather = async (lat: number, lon: number): Promise<OneCa
       console.error('请求配置错误:', error.message);
     }
     
-    return null;
-  }
-};
-
-/**
- * 获取指定时间的历史天气数据
- * 
- * API 调用格式:
- * https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={lat}&lon={lon}&dt={time}&appid={API密钥}
- * 
- * @param lat 纬度
- * @param lon 经度
- * @param timestamp Unix时间戳
- * @returns 历史天气数据
- */
-export const getHistoricalWeather = async (lat: number, lon: number, timestamp: number): Promise<TimeMachineResponse | null> => {
-  try {
-    // 从环境变量获取API密钥
-    const apiKey = getApiKey();
-    
-    if (!apiKey) {
-      console.error('OpenWeather API密钥未配置');
-      return null;
-    }
-
-    // 构建API请求URL
-    const url = `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${timestamp}&appid=${apiKey}&units=metric&lang=zh_cn`;
-    
-    console.log(`正在获取坐标 (${lat}, ${lon}) 在时间 ${timestamp} 的历史天气数据...`);
-    console.log(`请求URL: ${url}`);
-    
-    // 发送请求
-    const response = await axios.get<TimeMachineResponse>(url);
-    
-    // 检查响应状态
-    if (response.status !== 200) {
-      console.error('获取历史天气数据失败:', response.statusText);
-      return null;
-    }
-    
-    const data = response.data;
-    
-    console.log(`成功获取坐标 (${lat}, ${lon}) 在时间 ${timestamp} 的历史天气数据`);
-    
-    return data;
-  } catch (error: any) {
-    console.error('获取历史天气数据时出错:', error.message);
-    
-    // 如果是axios错误，提供更多详细信息
-    if (error.response) {
-      // 服务器响应了错误状态码
-      console.error('API响应错误:', error.response.status, error.response.data);
-    } else if (error.request) {
-      // 请求已发出但没有收到响应
-      console.error('网络请求错误:', error.request);
-    } else {
-      // 其他错误
-      console.error('请求配置错误:', error.message);
-    }
-    
-    return null;
-  }
-};
-
-/**
- * 获取指定日期的天气摘要数据
- * 
- * API 调用格式:
- * https://api.openweathermap.org/data/3.0/onecall/day_summary?lat={lat}&lon={lon}&date={date}&appid={API密钥}
- * 
- * @param lat 纬度
- * @param lon 经度
- * @param date 日期 (格式: YYYY-MM-DD)
- * @returns 指定日期的天气摘要数据
- */
-export const getDaySummary = async (lat: number, lon: number, date: string): Promise<DaySummaryResponse | null> => {
-  try {
-    // 从环境变量获取API密钥
-    const apiKey = getApiKey();
-    
-    if (!apiKey) {
-      console.error('OpenWeather API密钥未配置');
-      return null;
-    }
-
-    // 构建API请求URL
-    const url = `https://api.openweathermap.org/data/3.0/onecall/day_summary?lat=${lat}&lon=${lon}&date=${date}&appid=${apiKey}&units=metric&lang=zh_cn`;
-    
-    console.log(`正在获取坐标 (${lat}, ${lon}) 在日期 ${date} 的天气摘要数据...`);
-    console.log(`请求URL: ${url}`);
-    
-    // 发送请求
-    const response = await axios.get<DaySummaryResponse>(url);
-    
-    // 检查响应状态
-    if (response.status !== 200) {
-      console.error('获取天气摘要数据失败:', response.statusText);
-      return null;
-    }
-    
-    const data = response.data;
-    
-    console.log(`成功获取坐标 (${lat}, ${lon}) 在日期 ${date} 的天气摘要数据`);
-    
-    return data;
-  } catch (error: any) {
-    console.error('获取天气摘要数据时出错:', error.message);
-    
-    // 如果是axios错误，提供更多详细信息
-    if (error.response) {
-      // 服务器响应了错误状态码
-      console.error('API响应错误:', error.response.status, error.response.data);
-    } else if (error.request) {
-      // 请求已发出但没有收到响应
-      console.error('网络请求错误:', error.request);
-    } else {
-      // 其他错误
-      console.error('请求配置错误:', error.message);
-    }
-    
-    return null;
-  }
-};
-
-/**
- * 获取人类可读的天气概览和建议
- * 
- * API 调用格式:
- * https://api.openweathermap.org/data/3.0/onecall/overview?lat={lat}&lon={lon}&appid={API密钥}
- * 
- * @param lat 纬度
- * @param lon 经度
- * @returns 天气概览和建议
- */
-export const getWeatherOverview = async (lat: number, lon: number): Promise<OverviewResponse | null> => {
-  try {
-    // 从环境变量获取API密钥
-    const apiKey = getApiKey();
-    
-    if (!apiKey) {
-      console.error('OpenWeather API密钥未配置');
-      return null;
-    }
-
-    // 构建API请求URL
-    const url = `https://api.openweathermap.org/data/3.0/onecall/overview?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
-    
-    console.log(`正在获取坐标 (${lat}, ${lon}) 的天气概览...`);
-    console.log(`请求URL: ${url}`);
-    
-    // 发送请求
-    const response = await axios.get<OverviewResponse>(url);
-    
-    // 检查响应状态
-    if (response.status !== 200) {
-      console.error('获取天气概览失败:', response.statusText);
-      return null;
-    }
-    
-    const data = response.data;
-    
-    console.log(`成功获取坐标 (${lat}, ${lon}) 的天气概览`);
-    
-    return data;
-  } catch (error: any) {
-    console.error('获取天气概览时出错:', error.message);
-    
-    // 如果是axios错误，提供更多详细信息
-    if (error.response) {
-      // 服务器响应了错误状态码
-      console.error('API响应错误:', error.response.status, error.response.data);
-    } else if (error.request) {
-      // 请求已发出但没有收到响应
-      console.error('网络请求错误:', error.request);
-    } else {
-      // 其他错误
-      console.error('请求配置错误:', error.message);
-    }
-    
-    return null;
-  }
-};
-
-/**
- * 获取天气助手的Web界面URL
- * 
- * URL格式:
- * https://openweathermap.org/weather-assistant?apikey={API key}
- * 
- * @returns 天气助手的URL
- */
-export const getWeatherAssistantUrl = (): string | null => {
-  try {
-    // 从环境变量获取API密钥
-    const apiKey = getApiKey();
-    
-    if (!apiKey) {
-      console.error('OpenWeather API密钥未配置');
-      return null;
-    }
-
-    // 构建URL
-    const url = `https://openweathermap.org/weather-assistant?apikey=${apiKey}`;
-    
-    console.log(`天气助手URL: ${url}`);
-    
-    return url;
-  } catch (error: any) {
-    console.error('生成天气助手URL时出错:', error.message);
+    // 如果OneCall API不可用，返回null而不是抛出错误
     return null;
   }
 };
