@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { addWardrobeItem, updateWardrobeItem, deleteWardrobeItem, saveOutfitHistory, getOutfitHistory } from '@/services/outfitService'
+import { uploadFile } from '@/services/fileUploadService'
 import { getWeatherByCity, getWeatherByCoordinates, getOneCallWeather, OneCallResponse, WeatherData as WeatherApiData } from '@/services/weatherService'
 
 // 定义类型
@@ -73,6 +74,9 @@ export default function OutfitAssistantPage() {
     notes: '',
     tags: [] as Tag[]
   })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [editingImageFile, setEditingImageFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   // 在模态框打开时阻止页面滚动
   useEffect(() => {
@@ -352,8 +356,24 @@ export default function OutfitAssistantPage() {
     if (!user || !newItem.name || !newItem.category) return
 
     try {
+      let imageUrl = newItem.image_url
+      
+      // 如果有选择文件，先上传文件
+      if (imageFile) {
+        setIsUploading(true)
+        const { publicUrl, error } = await uploadFile(imageFile)
+        setIsUploading(false)
+        
+        if (error) {
+          throw new Error('文件上传失败: ' + error.message)
+        }
+        
+        imageUrl = publicUrl || ''
+      }
+
       const itemToAdd = {
         ...newItem,
+        image_url: imageUrl, // 使用上传后的URL或用户输入的URL
         user_id: user.id,
         notes: newItem.tags.join(', ') // 标签保存到notes字段
       }
@@ -378,6 +398,7 @@ export default function OutfitAssistantPage() {
           notes: '',
           tags: []
         })
+        setImageFile(null) // 重置文件选择
       }
     } catch (error) {
       console.error('衣物添加失败:', error)
@@ -390,8 +411,24 @@ export default function OutfitAssistantPage() {
     if (!editingItem || !editingItem.name || !editingItem.category) return
 
     try {
+      let imageUrl = editingItem.image_url
+      
+      // 如果有选择新文件，先上传文件
+      if (editingImageFile) {
+        setIsUploading(true)
+        const { publicUrl, error } = await uploadFile(editingImageFile)
+        setIsUploading(false)
+        
+        if (error) {
+          throw new Error('文件上传失败: ' + error.message)
+        }
+        
+        imageUrl = publicUrl || ''
+      }
+
       const itemToUpdate = {
         ...editingItem,
+        image_url: imageUrl, // 使用上传后的URL或原有的URL
         notes: editingItem.tags.join(', ') // 标签保存到notes字段
       }
 
@@ -408,6 +445,7 @@ export default function OutfitAssistantPage() {
         )
         setShowEditModal(false)
         setEditingItem(null)
+        setEditingImageFile(null) // 重置文件选择
       }
     } catch (error) {
       console.error('衣物编辑失败:', error)
@@ -516,13 +554,20 @@ export default function OutfitAssistantPage() {
     setShowDeleteConfirm(true)
   }
 
-  // フォーム入力変更処理（追加）
+  // 表单输入变化处理（添加）
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setNewItem(prev => ({
       ...prev,
       [name]: value
     }))
+  }
+
+  // 处理文件选择
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0])
+    }
   }
 
   // フォーム入力変更処理（編集）
@@ -936,7 +981,7 @@ export default function OutfitAssistantPage() {
                             className="text-cream-text-light hover:text-red-500 p-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-2-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
                         </div>
@@ -1085,7 +1130,7 @@ export default function OutfitAssistantPage() {
                         <option value="裤子">裤子</option>
                         <option value="外套">外套</option>
                         <option value="鞋子">鞋子</option>
-                        <option value="配饰">配饰</option>
+                        <option value="配飾">配飾</option>
                       </select>
                     </div>
                     
@@ -1152,18 +1197,6 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">品牌</label>
-                      <input
-                        type="text"
-                        name="brand"
-                        value={newItem.brand}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
-                        placeholder="请输入品牌"
-                      />
-                    </div>
-                    
-                    <div>
                       <label className="block text-sm font-medium text-cream-text-dark mb-1">购买日期</label>
                       <input
                         type="date"
@@ -1175,7 +1208,18 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片链接</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片上传</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                      />
+                      <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">或输入图片链接</label>
                       <input
                         type="text"
                         name="image_url"
@@ -1203,14 +1247,16 @@ export default function OutfitAssistantPage() {
                     <button 
                       onClick={() => setShowAddModal(false)}
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                      disabled={isUploading}
                     >
                       取消
                     </button>
                     <button 
                       onClick={handleAddWardrobeItem}
-                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
+                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300 disabled:opacity-50"
+                      disabled={isUploading}
                     >
-                      添加
+                      {isUploading ? '上传中...' : '添加'}
                     </button>
                   </div>
                 </div>
@@ -1262,7 +1308,7 @@ export default function OutfitAssistantPage() {
                         <option value="裤子">裤子</option>
                         <option value="外套">外套</option>
                         <option value="鞋子">鞋子</option>
-                        <option value="配饰">配飾</option>
+                        <option value="配飾">配飾</option>
                       </select>
                     </div>
                     
@@ -1354,7 +1400,28 @@ export default function OutfitAssistantPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片链接</label>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">图片上传</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleEditFileChange}
+                        className="w-full px-3 py-2 border border-cream-border rounded-lg focus:outline-none focus:ring-2 focus:ring-cream-accent"
+                      />
+                      <p className="text-xs text-cream-text-light mt-1">支持 JPG, PNG, GIF 格式，最大 5MB</p>
+                      {editingItem.image_url && (
+                        <div className="mt-2">
+                          <p className="text-sm text-cream-text-dark">当前图片:</p>
+                          <img 
+                            src={editingItem.image_url} 
+                            alt="当前图片" 
+                            className="w-16 h-16 object-cover rounded mt-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-1">或输入图片链接</label>
                       <input
                         type="text"
                         name="image_url"
@@ -1382,14 +1449,16 @@ export default function OutfitAssistantPage() {
                     <button 
                       onClick={() => setShowEditModal(false)}
                       className="px-4 py-2 border border-cream-border text-cream-text-dark rounded-lg hover:bg-cream-bg transition duration-300"
+                      disabled={isUploading}
                     >
                       取消
                     </button>
                     <button 
                       onClick={handleEditWardrobeItem}
-                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300"
+                      className="px-4 py-2 bg-cream-accent text-white rounded-lg hover:bg-cream-accent-hover transition duration-300 disabled:opacity-50"
+                      disabled={isUploading}
                     >
-                      保存
+                      {isUploading ? '上传中...' : '保存'}
                     </button>
                   </div>
                 </div>

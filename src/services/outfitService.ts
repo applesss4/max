@@ -645,7 +645,7 @@ const isColorCoordinated = (color1: string, color2: string): boolean => {
 
 // 判断是否为中性色
 const isNeutralColor = (color: string): boolean => {
-  const neutralColors = ['黑', '白', '灰', '米', '棕', '卡其', '驼']
+  const neutralColors = ['黑', '白', '灰', '米', '棕', '卡其']
   return neutralColors.some(neutral => color.includes(neutral))
 }
 
@@ -653,16 +653,32 @@ const isNeutralColor = (color: string): boolean => {
 const getColorCoordinationAdvice = (items: any[]): string => {
   if (items.length === 0) return ''
   
-  const colors = items
-    .map(item => item.color)
-    .filter(Boolean) as string[]
+  const colors = items.map(item => item.color).filter(Boolean) as string[]
+  if (colors.length === 0) return ''
   
+  // 检查是否有重复颜色
   const uniqueColors = [...new Set(colors)]
+  if (uniqueColors.length !== colors.length) {
+    return '这套搭配中使用了重复的颜色，形成了统一和谐的视觉效果。'
+  }
   
-  if (uniqueColors.length === 0) return '这套搭配注重款式协调。'
-  if (uniqueColors.length === 1) return `这套搭配采用单色系设计，简洁大方。`
-  if (uniqueColors.length === 2) return `这套搭配运用了${uniqueColors.join('与')}的双色搭配，经典耐看。`
-  if (uniqueColors.length === 3) return `这套搭配采用了${uniqueColors.slice(0, 2).join('、')}与${uniqueColors[2]}的三色搭配，层次丰富。`
+  // 检查是否使用了经典配色
+  if (uniqueColors.length >= 2) {
+    const colorPairs: [string, string][] = []
+    for (let i = 0; i < uniqueColors.length - 1; i++) {
+      for (let j = i + 1; j < uniqueColors.length; j++) {
+        colorPairs.push([uniqueColors[i], uniqueColors[j]])
+      }
+    }
+    
+    const classicPairs = colorPairs.filter(([c1, c2]) => 
+      isColorCoordinated(c1, c2)
+    )
+    
+    if (classicPairs.length > 0) {
+      return '这套搭配运用了经典的色彩组合，视觉效果协调舒适。'
+    }
+  }
   
-  return `这套搭配色彩丰富，注意整体协调性。`
+  return '这套搭配色彩丰富，具有良好的视觉层次感。'
 }
