@@ -209,9 +209,24 @@ img {
     flex-shrink: 0;
   }
   
-  /* 功能卡片移动端优化 */
+  /* 功能卡片样式 */
   .feature-card {
-    min-height: 140px;
+    min-height: 180px;
+    padding: 1.25rem;
+  }
+  
+  @media (min-width: 768px) {
+    .feature-card {
+      min-height: 200px;
+      padding: 1.5rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .feature-card {
+      min-height: 220px;
+      padding: 2rem;
+    }
   }
   
   /* 降雨提醒图表优化 */

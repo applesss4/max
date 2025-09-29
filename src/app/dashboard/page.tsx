@@ -20,16 +20,16 @@ const FeatureCard = React.memo(({
 }) => (
   <div 
     onClick={onClick}
-    className="bg-cream-card rounded-xl shadow-sm p-4 border border-cream-border hover:shadow-md transition duration-300 cursor-pointer flex flex-col h-full feature-card"
+    className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border hover:shadow-md transition duration-300 cursor-pointer flex flex-col h-full feature-card"
   >
-    <div className="flex items-center mb-3">
-      <div className="bg-cream-border p-1.5 rounded-md mr-2">
+    <div className="flex items-center mb-4">
+      <div className="bg-cream-border p-2 rounded-md mr-3">
         {icon}
       </div>
-      <h3 className="text-md font-medium text-cream-text">{title}</h3>
+      <h3 className="text-lg font-medium text-cream-text">{title}</h3>
     </div>
-    <p className="text-cream-text-light text-xs mb-3 flex-grow">{description}</p>
-    <button className="text-xs font-medium text-cream-accent hover:text-cream-accent-hover transition duration-300 mt-auto">
+    <p className="text-cream-text-light text-sm mb-4 flex-grow">{description}</p>
+    <button className="text-sm font-medium text-cream-accent hover:text-cream-accent-hover transition duration-300 mt-auto">
       点击进入 →
     </button>
   </div>
