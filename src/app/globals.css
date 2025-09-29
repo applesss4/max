@@ -196,12 +196,15 @@ img {
   }
   
   /* 天气图表移动端优化 */
-  .weather-chart-container {
+  .weather-chart-container, .rain-chart-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+    width: 100%;
+    position: relative;
   }
   
-  .weather-chart-item {
+  .weather-chart-item, .rain-chart-item {
     min-width: 35px;
     flex-shrink: 0;
   }
@@ -209,6 +212,42 @@ img {
   /* 功能卡片移动端优化 */
   .feature-card {
     min-height: 140px;
+  }
+  
+  /* 降雨提醒图表优化 */
+  .rain-chart-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+  
+  .rain-chart-item {
+    min-width: 40px;
+    flex-shrink: 0;
+  }
+  
+  /* 天气页面响应式调整 */
+  .weather-hourly-item {
+    min-width: 50px;
+  }
+  
+  /* 滚动条样式优化 */
+  .weather-chart-container::-webkit-scrollbar, .rain-chart-container::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .weather-chart-container::-webkit-scrollbar-track, .rain-chart-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .weather-chart-container::-webkit-scrollbar-thumb, .rain-chart-container::-webkit-scrollbar-thumb {
+    background: #c5b3a7;
+    border-radius: 3px;
+  }
+  
+  .weather-chart-container::-webkit-scrollbar-thumb:hover, .rain-chart-container::-webkit-scrollbar-thumb:hover {
+    background: #a89383;
   }
 }
 
@@ -306,11 +345,6 @@ img {
   img {
     max-width: 100%;
     height: auto;
-  }
-  
-  /* 天气页面响应式调整 */
-  .weather-hourly-item {
-    min-width: 50px;
   }
 }
 

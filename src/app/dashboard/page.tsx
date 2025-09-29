@@ -208,17 +208,19 @@ export default function DashboardPage() {
     return (
       <div className="mt-3">
         <h3 className="font-medium text-blue-800 text-sm mb-2">未来24小时降雨概率</h3>
-        <div className="flex items-end h-20 gap-1 overflow-x-auto pb-2 weather-chart-container">
-          {rainData.map((data, index) => (
-            <div key={index} className="flex flex-col items-center flex-shrink-0 weather-chart-item" style={{ width: '40px' }}>
-              <div className="text-blue-700 text-xs mb-1">{data.pop}%</div>
-              <div 
-                className="w-full bg-blue-400 rounded-t transition-all duration-300 hover:bg-blue-500"
-                style={{ height: `${(data.pop / maxPop) * 100}%` }}
-              ></div>
-              <div className="text-blue-800 text-xs mt-1">{data.time}点</div>
-            </div>
-          ))}
+        <div className="rain-chart-container" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex items-end h-20 gap-1 pb-2" style={{ minWidth: 'max-content', width: 'max-content' }}>
+            {rainData.map((data, index) => (
+              <div key={index} className="flex flex-col items-center flex-shrink-0 rain-chart-item">
+                <div className="text-blue-700 text-xs mb-1 whitespace-nowrap">{data.pop}%</div>
+                <div 
+                  className="w-full bg-blue-400 rounded-t transition-all duration-300 hover:bg-blue-500"
+                  style={{ height: `${(data.pop / maxPop) * 100}%` }}
+                ></div>
+                <div className="text-blue-800 text-xs mt-1 whitespace-nowrap">{data.time}点</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
