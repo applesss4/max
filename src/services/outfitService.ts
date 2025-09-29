@@ -7,12 +7,30 @@ export const getWardrobeItems = async (userId: string) => {
       .from('wardrobe_items')
       .select('*')
       .eq('user_id', userId)
+      .is('luggage_id', null) // 只获取未放入行李箱的衣物
       .order('created_at', { ascending: false })
 
     if (error) throw error
     return { data, error: null }
   } catch (error) {
     console.error('获取衣柜物品失败:', error)
+    return { data: null, error }
+  }
+}
+
+// 获取所有衣柜物品（包括已放入行李箱的）
+export const getAllWardrobeItems = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('wardrobe_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return { data, error: null }
+  } catch (error) {
+    console.error('获取所有衣柜物品失败:', error)
     return { data: null, error }
   }
 }
@@ -117,7 +135,28 @@ export const getOutfitPreviews = async (userId: string) => {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return { data, error: null }
+    
+    // 确保返回的数据格式正确
+    const processedData = data?.map((item: any) => {
+      // 确保 items 字段是数组格式
+      if (typeof item.items === 'string') {
+        try {
+          item.items = JSON.parse(item.items);
+        } catch (e) {
+          console.warn('解析items字段失败:', e);
+          item.items = [];
+        }
+      }
+      
+      // 确保 items 是数组
+      if (!Array.isArray(item.items)) {
+        item.items = [];
+      }
+      
+      return item;
+    }) || [];
+    
+    return { data: processedData, error: null }
   } catch (error) {
     console.error('获取搭配预览失败:', error)
     return { data: null, error }
@@ -127,10 +166,16 @@ export const getOutfitPreviews = async (userId: string) => {
 // 保存搭配预览
 export const saveOutfitPreview = async (preview: any) => {
   try {
+    // 确保 items 字段是 JSON 字符串格式
+    const previewToSave = {
+      ...preview,
+      items: Array.isArray(preview.items) ? JSON.stringify(preview.items) : preview.items
+    };
+    
     // @ts-ignore
     const { data, error } = await supabase
       .from('outfit_previews')
-      .insert(preview)
+      .insert(previewToSave)
       .select()
 
     if (error) throw error

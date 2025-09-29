@@ -296,6 +296,25 @@ img {
   -webkit-backdrop-filter: blur(2px);
 }
 
+/* 确保模态框始终居中显示 */
+.fixed-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+}
+
+.modal-container {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+}
+
 /* 优化表单元素 */
 .form-input, .form-select, .form-textarea {
   /* 启用硬件加速 */

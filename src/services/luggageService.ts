@@ -91,12 +91,17 @@ export const deleteLuggage = async (id: string) => {
   }
 }
 
-// 将衣物移动到行李箱
+// 将衣物移动到行李箱或从行李箱取出
 export const moveWardrobeItemToLuggage = async (wardrobeItemId: string, luggageId: string | null) => {
   try {
+    // 更新衣物的行李箱ID（null表示移回衣柜）
     const { data, error } = await supabase
       .from('wardrobe_items')
-      .update({ luggage_id: luggageId })
+      .update({ 
+        luggage_id: luggageId,
+        // 当从行李箱取出时，确保更新时间戳
+        updated_at: new Date().toISOString()
+      })
       .eq('id', wardrobeItemId)
       .select()
       .single()
@@ -104,7 +109,7 @@ export const moveWardrobeItemToLuggage = async (wardrobeItemId: string, luggageI
     if (error) throw error
     return { data, error: null }
   } catch (error) {
-    console.error('移动衣物到行李箱失败:', error)
+    console.error('移动衣物失败:', error)
     return { data: null, error }
   }
 }
