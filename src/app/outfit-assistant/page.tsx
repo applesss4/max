@@ -1043,9 +1043,9 @@ export default function OutfitAssistantPage() {
 
           {/* 添加衣物模态框 */}
           {showAddModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowAddModal(false)}></div>
-              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-cream-text-dark">添加衣物</h3>
@@ -1220,9 +1220,9 @@ export default function OutfitAssistantPage() {
 
           {/* 编辑衣物模态框 */}
           {showEditModal && editingItem && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowEditModal(false)}></div>
-              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-cream-text-dark">编辑衣物</h3>
@@ -1262,7 +1262,7 @@ export default function OutfitAssistantPage() {
                         <option value="裤子">裤子</option>
                         <option value="外套">外套</option>
                         <option value="鞋子">鞋子</option>
-                        <option value="配饰">配饰</option>
+                        <option value="配饰">配飾</option>
                       </select>
                     </div>
                     
@@ -1399,9 +1399,9 @@ export default function OutfitAssistantPage() {
 
           {/* 删除确认模态框 */}
           {showDeleteConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed-modal">
               <div className="absolute inset-0 bg-cream-bg bg-opacity-80" onClick={() => setShowDeleteConfirm(false)}></div>
-              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md z-10">
+              <div className="relative bg-cream-card rounded-2xl shadow-lg border border-cream-border w-full max-w-md modal-container">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-cream-text-dark">确认删除</h3>
