@@ -451,3 +451,69 @@ img {
 .hover-effect:hover {
   transform: translateY(-2px) translateZ(0);
 }
+
+/* 天气页面优化样式 */
+.weather-page-container {
+  max-width: 100%;
+}
+
+.weather-card {
+  transition: all 0.3s ease;
+  will-change: transform;
+}
+
+.weather-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.weather-icon {
+  transition: transform 0.2s ease;
+}
+
+.weather-icon:hover {
+  transform: scale(1.1);
+}
+
+.weather-hourly-item {
+  transition: all 0.2s ease;
+}
+
+.weather-hourly-item:hover {
+  background-color: #f8f5f6;
+  transform: translateY(-2px);
+}
+
+/* 响应式优化 */
+@media (min-width: 768px) {
+  .weather-page-padding {
+    padding: 2rem;
+  }
+  
+  .weather-card-padding {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .weather-page-padding {
+    padding: 2.5rem;
+  }
+  
+  .weather-card-padding {
+    padding: 2rem;
+  }
+}
+
+/* 天气详情卡片网格优化 */
+.weather-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .weather-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
