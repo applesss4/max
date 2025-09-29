@@ -144,49 +144,49 @@ export default function OutfitAssistantPage() {
   // 获取天气数据（真实的API调用）
   const fetchWeatherData = useCallback(async () => {
     try {
-      // 获取中国北京の天气データ
-      console.log('開始获取中国北京天气データ...');
+      // 获取中国北京的天气数据
+      console.log('开始获取中国北京天气数据...');
       // 方法1: 使用城市名获取天气
       const weather = await getWeatherByCity('Beijing');
       
       if (weather) {
-        console.log('成功获取北京天气データ:', weather);
+        console.log('成功获取北京天气数据:', weather);
         setWeatherData(weather);
         
-        // 获取完整的天气预报データ
+        // 获取完整的天气预报数据
         try {
-          // 使用北京の经纬度获取完整天气データ
-          // 北京の经纬度大约为: 緯度39.9042, 経度116.4074
+          // 使用北京的经纬度获取完整天气数据
+          // 北京的经纬度大约为: 纬度39.9042, 经度116.4074
           const fullWeather = await getOneCallWeather(39.9042, 116.4074);
           if (fullWeather) {
-            console.log('成功获取北京完整天气データ:', fullWeather);
+            console.log('成功获取北京完整天气数据:', fullWeather);
             setFullWeatherData(fullWeather);
           }
         } catch (error) {
-          console.error('获取北京完整天气データ失败:', error);
+          console.error('获取北京完整天气数据失败:', error);
         }
       } else {
-        console.warn('无法获取北京天气データ，尝试使用经纬度获取...');
+        console.warn('无法获取北京天气数据，尝试使用经纬度获取...');
         // 方法2: 如果城市名获取失败，使用经纬度获取
-        // 中国北京の经纬度大约为: 緯度39.9042, 経度116.4074
+        // 中国北京的经纬度大约为: 纬度39.9042, 经度116.4074
         const weatherByCoords = await getWeatherByCoordinates(39.9042, 116.4074);
         if (weatherByCoords) {
-          console.log('通過经纬度成功获取北京天气データ:', weatherByCoords);
+          console.log('通过经纬度成功获取北京天气数据:', weatherByCoords);
           setWeatherData(weatherByCoords);
           
-          // 获取完整的天气预报データ
+          // 获取完整的天气预报数据
           try {
             const fullWeather = await getOneCallWeather(39.9042, 116.4074);
             if (fullWeather) {
-              console.log('成功获取北京完整天气データ:', fullWeather);
+              console.log('成功获取北京完整天气数据:', fullWeather);
               setFullWeatherData(fullWeather);
             }
           } catch (error) {
-            console.error('获取北京完整天气データ失败:', error);
+            console.error('获取北京完整天气数据失败:', error);
           }
         } else {
-          console.warn('无法通過经纬度获取北京天气データ，使用模拟データ');
-          // 如果API调用失败，使用模拟データ
+          console.warn('无法通过经纬度获取北京天气数据，使用模拟数据');
+          // 如果API调用失败，使用模拟数据
           const mockWeather: WeatherApiData = {
             temperature: 22,
             condition: '晴',
@@ -205,8 +205,8 @@ export default function OutfitAssistantPage() {
         }
       }
     } catch (error) {
-      console.error('获取北京天气データ失败:', error);
-      // 如果API调用失败，使用模拟データ
+      console.error('获取北京天气数据失败:', error);
+      // 如果API调用失败，使用模拟数据
       const mockWeather: WeatherApiData = {
         temperature: 22,
         condition: '晴',
@@ -231,12 +231,12 @@ export default function OutfitAssistantPage() {
 
     setLoadingRecommendation(true)
     try {
-      // 根据北京の气候特点和天气データ推薦合适的衣物
+      // 根据北京的气候特点和天气数据推荐合适的衣物
       let recommendedItems: WardrobeItem[] = []
       
       // 根据温度推荐（考虑中国的季节特点）
       if (weatherData.temperature > 28) {
-        // 夏季炎热潮湿：推薦軽薄透气の衣物
+        // 夏季炎热潮湿：推荐轻薄透气的衣物
         recommendedItems = wardrobeItems.filter(item => 
           item.category === '上衣' && (item.season === '夏' || item.season === '四季') && 
           (item.notes?.includes('轻薄') || item.notes?.includes('透气') || item.notes?.includes('棉质'))
@@ -249,7 +249,7 @@ export default function OutfitAssistantPage() {
         
         recommendedItems = [...recommendedItems, ...pants]
       } else if (weatherData.temperature > 20) {
-        // 春秋季温和：推薦舒适適中の衣物
+        // 春秋季温和：推荐舒适适中的衣物
         recommendedItems = wardrobeItems.filter(item => 
           item.category === '上衣' && (item.season === '春' || item.season === '秋' || item.season === '四季')
         ).slice(0, 1)
@@ -260,7 +260,7 @@ export default function OutfitAssistantPage() {
         
         recommendedItems = [...recommendedItems, ...pants]
       } else if (weatherData.temperature > 10) {
-        // 早春晚秋涼爽：推薦稍厚一些の衣物
+        // 早春晚秋凉爽：推荐稍厚一些的衣物
         const outer = wardrobeItems.filter(item => 
           item.category === '外套' && (item.season === '春' || item.season === '秋' || item.season === '四季') &&
           (item.notes?.includes('薄外套') || item.notes?.includes('開衫') || item.notes?.includes('風衣'))
@@ -276,7 +276,7 @@ export default function OutfitAssistantPage() {
         
         recommendedItems = [...outer, ...inner, ...pants]
       } else {
-        // 冬季寒冷：推薦保暖衣物
+        // 冬季寒冷：推荐保暖衣物
         const outer = wardrobeItems.filter(item => 
           item.category === '外套' && (item.season === '冬' || item.season === '四季') &&
           (item.notes?.includes('厚外套') || item.notes?.includes('羽絨服') || item.notes?.includes('大衣'))
@@ -295,7 +295,7 @@ export default function OutfitAssistantPage() {
         recommendedItems = [...outer, ...inner, ...pants]
       }
       
-      // 根据天气狀況添加配飾
+      // 根据天气状况添加配饰
       if (weatherData.condition.includes('雨') || weatherData.condition.includes('Rain')) {
         // 下雨天推荐雨具
         const rainItems = wardrobeItems.filter(item => 
@@ -305,7 +305,7 @@ export default function OutfitAssistantPage() {
         
         recommendedItems = [...recommendedItems, ...rainItems]
       } else if (weatherData.humidity > 70) {
-        // 高湿度天气推荐透气配飾
+        // 高湿度天气推荐透气配饰
         const accessories = wardrobeItems.filter(item => 
           item.category === '配飾' && 
           (item.notes?.includes('透气') || item.notes?.includes('吸汗') || item.notes?.includes('棉質'))
@@ -313,7 +313,7 @@ export default function OutfitAssistantPage() {
         
         recommendedItems = [...recommendedItems, ...accessories]
       } else {
-        // 普通天气推薦一般配飾
+        // 普通天气推荐一般配饰
         const accessories = wardrobeItems.filter(item => 
           item.category === '配飾'
         ).slice(0, 2)
@@ -321,24 +321,24 @@ export default function OutfitAssistantPage() {
         recommendedItems = [...recommendedItems, ...accessories]
       }
       
-      // 生成推荐说明（针对北京気候特点）
+      // 生成推荐说明（针对北京气候特点）
       let weatherDescription = '';
       if (weatherData.temperature > 28) {
-        weatherDescription = '炎热潮湿の夏日';
+        weatherDescription = '炎热潮湿的夏日';
       } else if (weatherData.temperature > 20) {
         weatherDescription = '温暖舒适的春/秋季';
       } else if (weatherData.temperature > 10) {
-        weatherDescription = '涼爽の早春/晚秋';
+        weatherDescription = '凉爽的早春/晚秋';
       } else {
-        weatherDescription = '寒冷の冬季';
+        weatherDescription = '寒冷的冬季';
       }
       
-      // 添加湿度情報
+      // 添加湿度信息
       let humidityDescription = '';
       if (weatherData.humidity > 80) {
         humidityDescription = '，湿度较高，建议选择透气性好的衣物';
       } else if (weatherData.humidity > 60) {
-        humidityDescription = '，湿度適中';
+        humidityDescription = '，湿度适中';
       } else {
         humidityDescription = '，湿度较低';
       }
@@ -704,12 +704,12 @@ export default function OutfitAssistantPage() {
     }
   }, [user, fetchWardrobeItems, fetchWeatherData])
 
-  // URLパラメータをチェックし、editパラメータが存在する場合は編集モーダルを開く
+  // 处理编辑请求（来自详情页或其他地方）
   useEffect(() => {
     const editItemId = new URLSearchParams(window.location.search).get('edit');
     if (editItemId) {
       // 如果衣柜物品已经加载，直接查找并打开编辑模态框
-      if (wardrobeItems.length > 0) {
+      if (!loadingWardrobe && wardrobeItems.length > 0) {
         const itemToEdit = wardrobeItems.find(item => item.id === editItemId);
         if (itemToEdit) {
           openEditModal(itemToEdit);
@@ -717,21 +717,16 @@ export default function OutfitAssistantPage() {
         // URLパラメータをクリア
         router.replace('/outfit-assistant');
       }
-    }
-  }, [wardrobeItems, router]);
-  
-  // 处理从详情页跳转回来的编辑请求
-  useEffect(() => {
-    const editItemId = new URLSearchParams(window.location.search).get('edit');
-    if (editItemId && !loadingWardrobe && wardrobeItems.length > 0) {
-      const itemToEdit = wardrobeItems.find(item => item.id === editItemId);
-      if (itemToEdit) {
-        openEditModal(itemToEdit);
+      // 如果还在加载中，等待加载完成后再处理
+      else if (loadingWardrobe) {
+        // 会在另一个useEffect中处理
       }
-      // URLパラメータをクリア
-      router.replace('/outfit-assistant');
+      // 如果没有物品，重新获取
+      else if (wardrobeItems.length === 0 && user) {
+        fetchWardrobeItems();
+      }
     }
-  }, [loadingWardrobe, wardrobeItems, router]);
+  }, [wardrobeItems, router, loadingWardrobe, user, fetchWardrobeItems]);
 
   // 穿搭履歴取得
   useEffect(() => {
