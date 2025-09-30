@@ -49,6 +49,11 @@ export default function TodayWeatherPage() {
     let recommendation = '';
     let outfitType = '';
     
+    // 确保温度是有效数字
+    if (typeof temperature !== 'number' || isNaN(temperature)) {
+      return null;
+    }
+    
     if (temperature < 5) {
       recommendation = '极寒天气，建议穿羽绒服、厚毛衣、保暖内衣、围巾、手套和帽子。';
       outfitType = 'winter';
@@ -73,11 +78,11 @@ export default function TodayWeatherPage() {
     }
     
     // 根据天气状况调整建议
-    if (condition.includes('雨') || condition.includes('雨')) {
+    if (condition && (condition.includes('雨') || condition.includes('雨'))) {
       recommendation += ' 天气有雨，请携带雨伞或雨衣。';
-    } else if (condition.includes('雪') || condition.includes('雪')) {
+    } else if (condition && (condition.includes('雪') || condition.includes('雪'))) {
       recommendation += ' 天气有雪，请注意防滑，穿防水鞋。';
-    } else if (condition.includes('风') || condition.includes('风')) {
+    } else if (condition && (condition.includes('风') || condition.includes('风'))) {
       recommendation += ' 天气有风，请注意保暖，可穿防风外套。';
     }
     
@@ -213,7 +218,7 @@ export default function TodayWeatherPage() {
         )}
 
         {/* 穿衣推荐 */}
-        {clothingAdvice && (
+        {weatherData && clothingAdvice && (
           <div className="mb-6 p-4 border rounded-lg shadow-sm bg-cream-card border-cream-border dashboard-card">
             <h2 className="text-lg font-semibold mb-3 text-cream-text-dark">今日穿搭推荐</h2>
             <div className="flex items-start">

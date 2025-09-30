@@ -49,6 +49,43 @@ export default function DashboardPage() {
   const [currentCity, setCurrentCity] = useState('Chiba')
   const [weatherError, setWeatherError] = useState('')
   
+  // 根据天气条件生成穿衣建议
+  const getClothingRecommendation = (temperature: number, condition: string) => {
+    let recommendation = '';
+    
+    // 确保温度是有效数字
+    if (typeof temperature !== 'number' || isNaN(temperature)) {
+      return null;
+    }
+    
+    if (temperature < 5) {
+      recommendation = '极寒天气，建议穿羽绒服、厚毛衣、保暖内衣、围巾、手套和帽子。';
+    } else if (temperature < 10) {
+      recommendation = '寒冷天气，建议穿厚外套、毛衣、长裤和保暖鞋。';
+    } else if (temperature < 15) {
+      recommendation = '凉爽天气，建议穿夹克、薄毛衣、长裤和休闲鞋。';
+    } else if (temperature < 20) {
+      recommendation = '温和天气，建议穿薄外套、长袖衬衫、长裤或裙子。';
+    } else if (temperature < 25) {
+      recommendation = '温暖天气，建议穿短袖、薄长裤或裙子、凉鞋。';
+    } else if (temperature < 30) {
+      recommendation = '炎热天气，建议穿短袖、短裤、裙子、凉鞋或拖鞋。';
+    } else {
+      recommendation = '极热天气，建议穿轻薄透气的衣物，如短袖、背心、短裤，并做好防晒措施。';
+    }
+    
+    // 根据天气状况调整建议
+    if (condition && (condition.includes('雨') || condition.includes('雨'))) {
+      recommendation += ' 天气有雨，请携带雨伞或雨衣。';
+    } else if (condition && (condition.includes('雪') || condition.includes('雪'))) {
+      recommendation += ' 天气有雪，请注意防滑，穿防水鞋。';
+    } else if (condition && (condition.includes('风') || condition.includes('风'))) {
+      recommendation += ' 天气有风，请注意保暖，可穿防风外套。';
+    }
+    
+    return recommendation;
+  };
+
   // 优化功能卡片列表 - 提前定义，确保Hook顺序一致
   const featureCards = useMemo(() => {
     const cards = [
@@ -365,7 +402,12 @@ export default function DashboardPage() {
                     <div className="text-4xl font-bold text-cream-text-dark">{Math.round(weatherData.temperature)}°C</div>
                     <div className="ml-3">
                       <div className="text-lg text-cream-text-dark">{weatherData.condition}</div>
-                      <div className="text-cream-text-light text-sm">{weatherData.city}</div>
+                      <div className="text-cream-text-light text-sm">
+                        {weatherData.city}
+                        {fullWeatherData?.current?.feels_like && (
+                          <span className="ml-2">体感 {fullWeatherData.current.feels_like.toFixed(1)}°C</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -381,6 +423,21 @@ export default function DashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                       <span className="text-cream-text text-sm">风速: {weatherData.windSpeed} m/s</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 穿衣推荐 */}
+                <div className="mt-4 p-4 bg-amber-50 rounded-md border border-amber-200">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <div className="w-full">
+                      <h3 className="font-medium text-amber-800 text-sm mb-1">今日穿搭推荐</h3>
+                      <p className="text-amber-700 text-sm">
+                        {getClothingRecommendation(weatherData.temperature, weatherData.condition)}
+                      </p>
                     </div>
                   </div>
                 </div>
