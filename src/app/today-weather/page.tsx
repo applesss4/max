@@ -44,6 +44,46 @@ export default function TodayWeatherPage() {
     }
   }
 
+  // 根据天气条件生成穿衣建议
+  const getClothingRecommendation = (temperature: number, condition: string) => {
+    let recommendation = '';
+    let outfitType = '';
+    
+    if (temperature < 5) {
+      recommendation = '极寒天气，建议穿羽绒服、厚毛衣、保暖内衣、围巾、手套和帽子。';
+      outfitType = 'winter';
+    } else if (temperature < 10) {
+      recommendation = '寒冷天气，建议穿厚外套、毛衣、长裤和保暖鞋。';
+      outfitType = 'cold';
+    } else if (temperature < 15) {
+      recommendation = '凉爽天气，建议穿夹克、薄毛衣、长裤和休闲鞋。';
+      outfitType = 'cool';
+    } else if (temperature < 20) {
+      recommendation = '温和天气，建议穿薄外套、长袖衬衫、长裤或裙子。';
+      outfitType = 'mild';
+    } else if (temperature < 25) {
+      recommendation = '温暖天气，建议穿短袖、薄长裤或裙子、凉鞋。';
+      outfitType = 'warm';
+    } else if (temperature < 30) {
+      recommendation = '炎热天气，建议穿短袖、短裤、裙子、凉鞋或拖鞋。';
+      outfitType = 'hot';
+    } else {
+      recommendation = '极热天气，建议穿轻薄透气的衣物，如短袖、背心、短裤，并做好防晒措施。';
+      outfitType = 'very-hot';
+    }
+    
+    // 根据天气状况调整建议
+    if (condition.includes('雨') || condition.includes('雨')) {
+      recommendation += ' 天气有雨，请携带雨伞或雨衣。';
+    } else if (condition.includes('雪') || condition.includes('雪')) {
+      recommendation += ' 天气有雪，请注意防滑，穿防水鞋。';
+    } else if (condition.includes('风') || condition.includes('风')) {
+      recommendation += ' 天气有风，请注意保暖，可穿防风外套。';
+    }
+    
+    return { recommendation, outfitType };
+  };
+
   // 切换城市
   const handleSwitchCity = () => {
     if (newCity.trim()) {
@@ -77,6 +117,9 @@ export default function TodayWeatherPage() {
       </div>
     )
   }
+
+  // 获取穿衣建议
+  const clothingAdvice = weatherData ? getClothingRecommendation(weatherData.temperature, weatherData.condition) : null;
 
   return (
     <div className="min-h-screen weather-page-padding">
@@ -163,6 +206,23 @@ export default function TodayWeatherPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                   <span className="text-cream-text text-sm">能见度: {(weatherData.visibility / 1000).toFixed(1)} km</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 穿衣推荐 */}
+        {clothingAdvice && (
+          <div className="mb-6 p-4 border rounded-lg shadow-sm bg-cream-card border-cream-border dashboard-card">
+            <h2 className="text-lg font-semibold mb-3 text-cream-text-dark">今日穿搭推荐</h2>
+            <div className="flex items-start">
+              <div className="flex-1">
+                <div className="text-cream-text-dark mb-2">
+                  <span className="font-medium">推荐:</span> {clothingAdvice.recommendation}
+                </div>
+                <div className="text-cream-text-light text-sm">
+                  根据当前温度 {Math.round(weatherData.temperature)}°C 和天气状况 "{weatherData.condition}" 为您推荐
                 </div>
               </div>
             </div>
