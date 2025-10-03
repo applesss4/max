@@ -1,0 +1,6 @@
+-- 为信用卡表添加已还款金额和期数字段
+ALTER TABLE credit_cards 
+ADD COLUMN IF NOT EXISTS paid_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00;
+
+ALTER TABLE credit_cards 
+ADD COLUMN IF NOT EXISTS periods INTEGER NOT NULL DEFAULT 1;

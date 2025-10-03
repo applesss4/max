@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { getWeatherByCity, getOneCallWeather } from '@/services/weatherService'
+import { getCreditCards, updateCreditCard as updateCreditCardService } from '@/services/creditCardService'
+import { getLoans, updateLoan as updateLoanService } from '@/services/loanService'
 
 // 优化功能卡片组件
 const FeatureCard = React.memo(({ 
@@ -37,6 +39,229 @@ const FeatureCard = React.memo(({
 
 FeatureCard.displayName = 'FeatureCard'
 
+// 新增的本月还款概览组件
+const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCards: any[]; loans: any[] }) => {
+  const { user } = useAuth();
+  const [paidPayments, setPaidPayments] = useState<Set<string>>(new Set());
+  const [localCreditCards, setLocalCreditCards] = useState(creditCards);
+  const [localLoans, setLocalLoans] = useState(loans);
+  
+  // 计算本月待还款总额
+  const calculateMonthlyPayment = useCallback(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth(); // 0-11 (January is 0)
+    
+    // 计算信用卡本月待还款总额
+    const creditMonthly = localCreditCards.reduce((sum, card) => {
+      // 获取还款日（几号）
+      const paymentDay = new Date(card.payment_date).getDate();
+      
+      // 构造本月的还款日期
+      const repaymentDate = new Date(currentYear, currentMonth, paymentDay);
+      
+      // 检查构造的日期是否有效（比如处理2月30日这种无效日期）
+      if (repaymentDate.getMonth() === currentMonth) {
+        // 根据信用卡类型计算待还款金额
+        // 分期信用卡使用月还款金额，不分期信用卡使用总金额
+        const amount = card.card_type === 'installment' ? card.monthly_payment : card.total_amount;
+        return sum + amount;
+      }
+      return sum;
+    }, 0);
+    
+    // 计算贷款本月待还款总额
+    const loanMonthly = localLoans.reduce((sum, loan) => {
+      // 获取还款日（几号）
+      const paymentDay = new Date(loan.payment_date).getDate();
+      
+      // 构造本月的还款日期
+      const repaymentDate = new Date(currentYear, currentMonth, paymentDay);
+      
+      // 检查构造的日期是否有效（比如处理2月30日这种无效日期）
+      if (repaymentDate.getMonth() === currentMonth) {
+        return sum + loan.monthly_payment;
+      }
+      return sum;
+    }, 0);
+    
+    // 返回本月信用卡和贷款待还款总额
+    return creditMonthly + loanMonthly;
+  }, [localCreditCards, localLoans]);
+
+  // 获取最近的还款项目（未来7天内）
+  const getUpcomingPayments = useCallback(() => {
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    
+    // 获取信用卡还款项目
+    const creditPayments = localCreditCards
+      .filter(card => {
+        const paymentDate = new Date(card.payment_date);
+        return paymentDate >= today && paymentDate <= nextWeek;
+      })
+      .map(card => ({
+        id: card.id,
+        name: card.card_name,
+        type: '信用卡',
+        amount: card.card_type === 'installment' ? card.monthly_payment : card.total_amount,
+        date: new Date(card.payment_date)
+      }));
+    
+    // 获取贷款还款项目
+    const loanPayments = localLoans
+      .filter(loan => {
+        const paymentDate = new Date(loan.payment_date);
+        return paymentDate >= today && paymentDate <= nextWeek;
+      })
+      .map(loan => ({
+        id: loan.id,
+        name: loan.loan_name,
+        type: loan.loan_type,
+        amount: loan.monthly_payment,
+        date: new Date(loan.payment_date)
+      }));
+    
+    // 合并并按日期排序
+    const allPayments = [...creditPayments, ...loanPayments];
+    allPayments.sort((a, b) => a.date.getTime() - b.date.getTime());
+    
+    return allPayments;
+  }, [localCreditCards, localLoans]);
+
+  // 标记为已还
+  const markAsPaid = async (payment: { id: string; type: string; amount: number }) => {
+    if (!user) return;
+    
+    try {
+      // 创建新的已支付集合
+      const newPaidPayments = new Set(paidPayments);
+      newPaidPayments.add(`${payment.type}-${payment.id}`);
+      setPaidPayments(newPaidPayments);
+      
+      // 更新本地状态和远程数据
+      if (payment.type === '信用卡') {
+        // 找到对应的信用卡
+        const card = localCreditCards.find(c => c.id === payment.id);
+        if (card) {
+          // 更新已还金额
+          const updatedCard = {
+            ...card,
+            paid_amount: card.paid_amount + payment.amount
+          };
+          
+          // 更新本地状态
+          const updatedCards = localCreditCards.map(c => 
+            c.id === payment.id ? updatedCard : c
+          );
+          setLocalCreditCards(updatedCards);
+          
+          // 更新远程数据
+          await updateCreditCardService(payment.id, {
+            paid_amount: updatedCard.paid_amount
+          });
+        }
+      } else {
+        // 找到对应的贷款
+        const loan = localLoans.find(l => l.id === payment.id);
+        if (loan) {
+          // 更新已还金额
+          const updatedLoan = {
+            ...loan,
+            paid_amount: loan.paid_amount + payment.amount
+          };
+          
+          // 更新本地状态
+          const updatedLoans = localLoans.map(l => 
+            l.id === payment.id ? updatedLoan : l
+          );
+          setLocalLoans(updatedLoans);
+          
+          // 更新远程数据
+          await updateLoanService(payment.id, {
+            paid_amount: updatedLoan.paid_amount
+          });
+        }
+      }
+    } catch (error) {
+      console.error('标记为已还失败:', error);
+      // 如果失败，回滚状态
+      const newPaidPayments = new Set(paidPayments);
+      newPaidPayments.delete(`${payment.type}-${payment.id}`);
+      setPaidPayments(newPaidPayments);
+    }
+  };
+
+  const monthlyPayment = calculateMonthlyPayment();
+  const upcomingPayments = getUpcomingPayments().filter(
+    payment => !paidPayments.has(`${payment.type}-${payment.id}`)
+  );
+
+  return (
+    <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-xl font-bold text-cream-text-dark">本月还款概览</h2>
+        <span className="text-sm text-cream-text-light">最近7天内</span>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+          <p className="text-sm text-orange-700">本月待还款总额</p>
+          <p className="text-2xl font-bold text-orange-800">¥{monthlyPayment.toFixed(2)}</p>
+        </div>
+      </div>
+      
+      {upcomingPayments.length > 0 ? (
+        <div>
+          <h3 className="text-sm font-medium text-cream-text-dark mb-2">近期还款项目</h3>
+          <div className="space-y-2">
+            {upcomingPayments.map((payment) => {
+              const paymentDate = payment.date;
+              const today = new Date();
+              const timeDiff = paymentDate.getTime() - today.getTime();
+              const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+              
+              return (
+                <div key={`${payment.type}-${payment.id}`} className="flex justify-between items-center p-3 bg-cream-bg rounded-md">
+                  <div>
+                    <p className="font-medium text-cream-text-dark">{payment.name}</p>
+                    <p className="text-sm text-cream-text-light">{payment.type} • 每月{paymentDate.getDate()}号</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className="font-medium text-cream-text-dark">¥{payment.amount.toFixed(2)}</p>
+                      <p className={`text-sm ${daysLeft <= 1 ? 'text-red-600 font-medium' : 'text-cream-text-light'}`}>
+                        {daysLeft > 0 ? `${daysLeft}天后` : daysLeft === 0 ? '今天' : `${Math.abs(daysLeft)}天前`}
+                      </p>
+                    </div>
+                    <button 
+                      className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded-md transition duration-300 whitespace-nowrap"
+                      onClick={() => markAsPaid({ 
+                        id: payment.id, 
+                        type: payment.type,
+                        amount: payment.amount
+                      })}
+                    >
+                      已还
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-4 text-cream-text-light">
+          <p>最近7天内没有待还款项目</p>
+        </div>
+      )}
+    </div>
+  );
+});
+
+MonthlyRepaymentOverview.displayName = 'MonthlyRepaymentOverview';
+
 export default function DashboardPage() {
   const { user, logout, loading } = useAuth()
   const router = useRouter()
@@ -48,6 +273,9 @@ export default function DashboardPage() {
   const [newCity, setNewCity] = useState('')
   const [currentCity, setCurrentCity] = useState('Chiba')
   const [weatherError, setWeatherError] = useState('')
+  const [allCreditCards, setAllCreditCards] = useState<any[]>([])
+  const [allLoans, setAllLoans] = useState<any[]>([])
+  const [loadingPayments, setLoadingPayments] = useState(true)
   
   // 根据天气条件生成穿衣建议
   const getClothingRecommendation = (temperature: number, condition: string) => {
@@ -114,7 +342,7 @@ export default function DashboardPage() {
         description: '安全存储和管理您的密码',
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
         ),
         onClick: () => router.push('/password-vault')
@@ -124,10 +352,20 @@ export default function DashboardPage() {
         description: '管理您的菜谱和制作视频',
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         ),
         onClick: () => router.push('/recipes')
+      },
+      {
+        title: '财务管理',
+        description: '管理您的信用卡和贷款',
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-cream-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        onClick: () => router.push('/finance')
       }
     ];
     
@@ -166,6 +404,25 @@ export default function DashboardPage() {
     }
   }, [currentCity])
 
+  // 获取即将到期的信用卡还款
+  const fetchUpcomingPayments = useCallback(async () => {
+    if (!user) return
+
+    try {
+      setLoadingPayments(true)
+      const [allCards, allLoanData] = await Promise.all([
+        getCreditCards(user.id),
+        getLoans(user.id)
+      ])
+      setAllCreditCards(allCards)
+      setAllLoans(allLoanData)
+    } catch (error) {
+      console.error('获取财务信息失败:', error)
+    } finally {
+      setLoadingPayments(false)
+    }
+  }, [user])
+
   // 处理重定向逻辑
   useEffect(() => {
     if (!loading && !user) {
@@ -173,12 +430,13 @@ export default function DashboardPage() {
     }
   }, [user, loading, router])
 
-  // 获取天气数据
+  // 获取天气数据和财务信息
   useEffect(() => {
     if (user) {
       fetchWeatherData()
+      fetchUpcomingPayments()
     }
-  }, [user, fetchWeatherData])
+  }, [user, fetchWeatherData, fetchUpcomingPayments])
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -218,44 +476,40 @@ export default function DashboardPage() {
 
   // 获取下雨时间信息
   const getRainTimeInfo = () => {
-    if (!fullWeatherData || !fullWeatherData.hourly) return null
+    if (!fullWeatherData || !fullWeatherData.hourly) return null;
     
-    // 查找未来24小时内有降水概率的时间段
-    const rainyHours = fullWeatherData.hourly
-      .slice(0, 24)
-      .filter((hour: any) => hour.pop > 0.3) // 降水概率大于30%
-      .map((hour: any) => {
-        const date = new Date(hour.dt * 1000)
-        return {
-          time: date.getHours(),
-          pop: Math.round(hour.pop * 100)
-        }
-      })
+    // 获取未来24小时的数据
+    const next24Hours = fullWeatherData.hourly.slice(0, 24);
     
-    if (rainyHours.length > 0) {
-      return rainyHours
-    }
+    // 转换数据格式
+    const rainyHours = next24Hours.map((hour: any) => {
+      const date = new Date(hour.dt * 1000);
+      return {
+        time: date.getHours(),
+        pop: Math.round(hour.pop * 100)
+      };
+    });
     
-    return null
-  }
+    return rainyHours;
+  };
 
-  const rainInfo = getRainTimeInfo()
+  const rainInfo = getRainTimeInfo();
 
   // 处理城市切换
   const handleSwitchCity = () => {
     if (newCity.trim() && newCity !== currentCity) {
-      fetchWeatherData(newCity.trim())
-      setNewCity('')
-      setShowCityInput(false)
+      fetchWeatherData(newCity.trim());
+      setNewCity('');
+      setShowCityInput(false);
     }
-  }
+  };
 
   // 处理回车键切换城市
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSwitchCity()
+      handleSwitchCity();
     }
-  }
+  };
 
   // 降雨概率图表组件
   const RainChart = ({ rainData }: { rainData: { time: number; pop: number }[] }) => {
@@ -265,11 +519,11 @@ export default function DashboardPage() {
     return (
       <div className="mt-3 w-full">
         <h3 className="font-medium text-blue-800 text-sm mb-2">未来24小时降雨概率</h3>
-        <div className="w-full overflow-x-auto force-scrollbar" style={{ 
+        <div className="weather-chart-container w-full overflow-x-auto force-scrollbar" style={{ 
           WebkitOverflowScrolling: 'touch',
           padding: '0 0 10px 0'
         }}>
-          <div className="flex items-end h-20 gap-1" style={{ 
+          <div className="flex items-end h-24 gap-1" style={{ 
             minWidth: 'max-content',
             padding: '0 2px'
           }}>
@@ -277,15 +531,22 @@ export default function DashboardPage() {
               <div key={index} className="flex flex-col items-center flex-shrink-0" style={{
                 width: '40px'
               }}>
-                <div className="text-blue-700 text-xs mb-1 whitespace-nowrap">{data.pop}%</div>
-                <div 
-                  className="w-full bg-blue-400 rounded-t transition-all duration-300 hover:bg-blue-500"
-                  style={{ height: `${(data.pop / maxPop) * 100}%` }}
-                ></div>
+                {/* 用柱状图表示概率，不显示具体数字 */}
+                <div className="flex items-end justify-center w-full h-16 mb-1">
+                  <div 
+                    className={`w-full rounded-t transition-all duration-300 hover:bg-blue-500 ${
+                      data.pop > 30 ? 'bg-blue-400' : 'bg-blue-100'
+                    }`}
+                    style={{ height: `${Math.max((data.pop / maxPop) * 100, 5)}%` }}
+                  ></div>
+                </div>
                 <div className="text-blue-800 text-xs mt-1 whitespace-nowrap">{data.time}点</div>
               </div>
             ))}
           </div>
+        </div>
+        <div className="mt-2 text-xs text-blue-600">
+          * 柱状图高度表示降雨概率，颜色深浅表示概率高低
         </div>
       </div>
     );
@@ -353,6 +614,18 @@ export default function DashboardPage() {
 
         {/* 主内容区域 */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* 财务概览区域 */}
+          {loadingPayments ? (
+            <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
+              <div className="flex justify-center items-center py-4">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cream-accent"></div>
+                <span className="ml-2 text-cream-text-dark">正在加载财务信息...</span>
+              </div>
+            </div>
+          ) : (
+            <MonthlyRepaymentOverview creditCards={allCreditCards} loans={allLoans} />
+          )}
+          
           {/* 天气信息展示区域 */}
           <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6 dashboard-weather-card-padding">
             <div className="flex justify-between items-center mb-3">
@@ -441,7 +714,7 @@ export default function DashboardPage() {
                 <div className="mt-4 p-4 bg-amber-50 rounded-md border border-amber-200">
                   <div className="flex items-start">
                     <svg className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
                     </svg>
                     <div className="w-full">
                       <h3 className="font-medium text-amber-800 text-sm mb-1">今日穿搭推荐</h3>

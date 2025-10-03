@@ -9,6 +9,100 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      credit_cards: {
+        Row: {
+          id: string
+          user_id: string
+          card_name: string
+          card_number_last_4: string
+          total_amount: number
+          monthly_payment: number
+          payment_date: string
+          paid_amount: number
+          periods: number
+          card_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          card_name: string
+          card_number_last_4: string
+          total_amount?: number
+          monthly_payment?: number
+          payment_date: string
+          paid_amount?: number
+          periods?: number
+          card_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          card_name?: string
+          card_number_last_4?: string
+          total_amount?: number
+          monthly_payment?: number
+          payment_date?: string
+          paid_amount?: number
+          periods?: number
+          card_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      loans: {
+        Row: {
+          id: string
+          user_id: string
+          loan_name: string
+          loan_type: string
+          total_amount: number
+          monthly_payment: number
+          payment_date: string
+          paid_amount: number
+          periods: number
+          interest_rate: number
+          start_date: string
+          end_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          loan_name: string
+          loan_type: string
+          total_amount?: number
+          monthly_payment?: number
+          payment_date: string
+          paid_amount?: number
+          periods?: number
+          interest_rate?: number
+          start_date: string
+          end_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          loan_name?: string
+          loan_type?: string
+          total_amount?: number
+          monthly_payment?: number
+          payment_date?: string
+          paid_amount?: number
+          periods?: number
+          interest_rate?: number
+          start_date?: string
+          end_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       todos: {
         Row: {
           id: string
