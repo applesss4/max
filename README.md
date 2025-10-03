@@ -11,6 +11,7 @@
 - 电商商品管理
 - 日本新闻浏览
 - 智能穿搭助理（支持根据天气从网络获取穿搭推荐）
+- 菜谱管理（支持上传菜谱图片和制作视频）
 
 ## 快速开始
 
@@ -55,6 +56,7 @@
 
 - `wardrobe_items` - 衣柜物品
 - `outfit_history` - 穿搭历史
+- `recipes` - 菜谱
 
 ## 部署到线上环境
 
@@ -131,6 +133,15 @@ src/
 
 网络穿搭推荐功能会使用Pexels API获取高质量的穿搭图片，并在穿搭推荐页面展示。
 
+### 菜谱管理
+- 查看菜谱列表
+- 添加新的菜谱（包含菜谱名称、描述、图片和制作视频）
+- 查看菜谱详情（支持视频播放）
+- 支持上传图片和视频文件
+- 使用行级安全策略确保用户只能访问自己的菜谱
+
+菜谱功能使用Supabase存储服务保存上传的图片和视频文件，并将文件链接存储在数据库中。
+
 ## 文档
 
 - [LOCAL_SUPABASE_SETUP.md](LOCAL_SUPABASE_SETUP.md) - 本地Supabase开发环境设置
@@ -139,6 +150,8 @@ src/
 - [DATABASE_SETUP_SUMMARY.md](DATABASE_SETUP_SUMMARY.md) - 数据库设置总结
 - [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - 实现总结报告
 - [ECOMMERCE_TROUBLESHOOTING.md](ECOMMERCE_TROUBLESHOOTING.md) - 电商功能故障排查指南
+- [RECIPES_FEATURE.md](RECIPES_FEATURE.md) - 菜谱功能详细说明
+
 ## 开发指南
 
 ### 添加新功能

@@ -566,6 +566,39 @@ export interface Database {
           updated_at?: string
         }
       }
+      // 添加菜谱表类型定义
+      recipes: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          video_url: string | null
+          image_url: string | null
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          video_url?: string | null
+          image_url?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          video_url?: string | null
+          image_url?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
