@@ -89,17 +89,20 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
     return creditMonthly + loanMonthly;
   }, [localCreditCards, localLoans]);
 
-  // 获取最近的还款项目（未来7天内）
+  // 获取最近的还款项目（未来7天内以及过去7天内未标记为已还的）
   const getUpcomingPayments = useCallback(() => {
     const today = new Date();
     const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
+    const lastWeek = new Date();
+    lastWeek.setDate(today.getDate() - 7);
     
     // 获取信用卡还款项目
     const creditPayments = localCreditCards
       .filter(card => {
         const paymentDate = new Date(card.payment_date);
-        return paymentDate >= today && paymentDate <= nextWeek;
+        // 显示未来7天内的还款，以及过去7天内未还的还款
+        return (paymentDate >= lastWeek && paymentDate <= nextWeek);
       })
       .map(card => ({
         id: card.id,
@@ -113,7 +116,8 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
     const loanPayments = localLoans
       .filter(loan => {
         const paymentDate = new Date(loan.payment_date);
-        return paymentDate >= today && paymentDate <= nextWeek;
+        // 显示未来7天内的还款，以及过去7天内未还的还款
+        return (paymentDate >= lastWeek && paymentDate <= nextWeek);
       })
       .map(loan => ({
         id: loan.id,
@@ -202,7 +206,7 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
     <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-xl font-bold text-cream-text-dark">本月还款概览</h2>
-        <span className="text-sm text-cream-text-light">最近7天内</span>
+        <span className="text-sm text-cream-text-light">最近7天内及逾期未还</span>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -222,16 +226,19 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
               const timeDiff = paymentDate.getTime() - today.getTime();
               const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
               
+              // 检查是否已过期（超过还款日且未标记为已还）
+              const isOverdue = daysLeft < 0 && !paidPayments.has(`${payment.type}-${payment.id}`);
+              
               return (
-                <div key={`${payment.type}-${payment.id}`} className="flex justify-between items-center p-3 bg-cream-bg rounded-md">
+                <div key={`${payment.type}-${payment.id}`} className={`flex justify-between items-center p-3 rounded-md ${isOverdue ? 'bg-red-50 border border-red-200' : 'bg-cream-bg'}`}>
                   <div>
-                    <p className="font-medium text-cream-text-dark">{payment.name}</p>
+                    <p className={`font-medium ${isOverdue ? 'text-red-700' : 'text-cream-text-dark'}`}>{payment.name}</p>
                     <p className="text-sm text-cream-text-light">{payment.type} • 每月{paymentDate.getDate()}号</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="text-right">
                       <p className="font-medium text-cream-text-dark">¥{payment.amount.toFixed(2)}</p>
-                      <p className={`text-sm ${daysLeft <= 1 ? 'text-red-600 font-medium' : 'text-cream-text-light'}`}>
+                      <p className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : daysLeft <= 1 ? 'text-red-600 font-medium' : 'text-cream-text-light'}`}>
                         {daysLeft > 0 ? `${daysLeft}天后` : daysLeft === 0 ? '今天' : `${Math.abs(daysLeft)}天前`}
                       </p>
                     </div>
