@@ -65,7 +65,9 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
         // 根据信用卡类型计算待还款金额
         // 分期信用卡使用月还款金额，不分期信用卡使用总金额
         const amount = card.card_type === 'installment' ? card.monthly_payment : card.total_amount;
-        return sum + amount;
+        // 减去已还金额，确保只计算未还部分
+        const remainingAmount = Math.max(0, amount - card.paid_amount);
+        return sum + remainingAmount;
       }
       return sum;
     }, 0);
@@ -80,7 +82,9 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
       
       // 检查构造的日期是否有效（比如处理2月30日这种无效日期）
       if (repaymentDate.getMonth() === currentMonth) {
-        return sum + loan.monthly_payment;
+        // 减去已还金额，确保只计算未还部分
+        const remainingAmount = Math.max(0, loan.monthly_payment - loan.paid_amount);
+        return sum + remainingAmount;
       }
       return sum;
     }, 0);
@@ -102,7 +106,9 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
       .filter(card => {
         const paymentDate = new Date(card.payment_date);
         // 显示未来7天内的还款，以及过去7天内未还的还款
-        return (paymentDate >= lastWeek && paymentDate <= nextWeek);
+        // 过滤掉已还的项目（已还金额大于等于应还金额）
+        const isPaid = card.paid_amount >= (card.card_type === 'installment' ? card.monthly_payment : card.total_amount);
+        return (paymentDate >= lastWeek && paymentDate <= nextWeek) && !isPaid;
       })
       .map(card => ({
         id: card.id,
@@ -117,7 +123,9 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
       .filter(loan => {
         const paymentDate = new Date(loan.payment_date);
         // 显示未来7天内的还款，以及过去7天内未还的还款
-        return (paymentDate >= lastWeek && paymentDate <= nextWeek);
+        // 过滤掉已还的项目（已还金额大于等于应还金额）
+        const isPaid = loan.paid_amount >= loan.monthly_payment;
+        return (paymentDate >= lastWeek && paymentDate <= nextWeek) && !isPaid;
       })
       .map(loan => ({
         id: loan.id,
@@ -139,11 +147,6 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
     if (!user) return;
     
     try {
-      // 创建新的已支付集合
-      const newPaidPayments = new Set(paidPayments);
-      newPaidPayments.add(`${payment.type}-${payment.id}`);
-      setPaidPayments(newPaidPayments);
-      
       // 更新本地状态和远程数据
       if (payment.type === '信用卡') {
         // 找到对应的信用卡
@@ -188,19 +191,21 @@ const MonthlyRepaymentOverview = React.memo(({ creditCards, loans }: { creditCar
           });
         }
       }
+      
+      // 触发父组件重新获取数据
+      window.dispatchEvent(new CustomEvent('paymentUpdated'));
     } catch (error) {
       console.error('标记为已还失败:', error);
-      // 如果失败，回滚状态
-      const newPaidPayments = new Set(paidPayments);
-      newPaidPayments.delete(`${payment.type}-${payment.id}`);
-      setPaidPayments(newPaidPayments);
     }
   };
 
+  // 过滤掉已还的项目
+  const filterPaidPayments = useCallback((payments: any[]) => {
+    return payments.filter(payment => !paidPayments.has(`${payment.type}-${payment.id}`));
+  }, [paidPayments]);
+
   const monthlyPayment = calculateMonthlyPayment();
-  const upcomingPayments = getUpcomingPayments().filter(
-    payment => !paidPayments.has(`${payment.type}-${payment.id}`)
-  );
+  const upcomingPayments = getUpcomingPayments();
 
   return (
     <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
@@ -442,6 +447,18 @@ export default function DashboardPage() {
     if (user) {
       fetchWeatherData()
       fetchUpcomingPayments()
+      
+      // 添加事件监听器，当还款状态更新时重新获取数据
+      const handlePaymentUpdate = () => {
+        fetchUpcomingPayments()
+      }
+      
+      window.addEventListener('paymentUpdated', handlePaymentUpdate)
+      
+      // 清理事件监听器
+      return () => {
+        window.removeEventListener('paymentUpdated', handlePaymentUpdate)
+      }
     }
   }, [user, fetchWeatherData, fetchUpcomingPayments])
 
