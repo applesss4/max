@@ -4,12 +4,11 @@
 
 在现有网页上增加一个"智能穿搭助理"功能，用户可：
 
-1. 查看今日天气
-2. 读取个人衣柜（Supabase 数据库）
-3. 根据天气生成今日穿搭推荐
-4. 上传衣服图片并管理衣柜
-5. 保存每日穿搭历史
-6. 在主页导航栏增加入口，跳转到新页面
+1. 读取个人衣柜（Supabase 数据库）
+2. 生成今日穿搭推荐
+3. 上传衣服图片并管理衣柜
+4. 保存每日穿搭历史
+5. 在主页导航栏增加入口，跳转到新页面
 
 ## 技术架构
 
@@ -50,7 +49,6 @@ CREATE TABLE outfit_history (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   outfit_date DATE NOT NULL DEFAULT CURRENT_DATE,
   items JSONB, -- 穿搭物品列表 [{id, name, category, image_url}]
-  weather JSONB, -- 天气信息 {temperature, condition, humidity, etc.}
   notes TEXT, -- 穿搭备注
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -105,7 +103,7 @@ saveOutfitHistory(outfit: OutfitHistoryInsert)
 
 ### 生成穿搭推荐
 ```typescript
-generateOutfitRecommendation(weather: { temperature: number; condition: string }, wardrobeItems: WardrobeItem[])
+generateOutfitRecommendation(wardrobeItems: WardrobeItem[], preferences: { season?: string, style?: string })
 ```
 
 ## 前端组件
@@ -158,10 +156,9 @@ CREATE POLICY "用户只能查看自己的穿搭历史" ON outfit_history
 
 ### 功能测试
 1. 验证用户可以访问智能穿搭助理页面
-2. 验证天气信息显示正确
-3. 验证衣柜物品可以添加、编辑、删除
-4. 验证穿搭推荐功能正常工作
-5. 验证穿搭历史可以保存和查看
+2. 验证衣柜物品可以添加、编辑、删除
+3. 验证穿搭推荐功能正常工作
+4. 验证穿搭历史可以保存和查看
 
 ### 安全测试
 1. 验证用户只能访问自己的数据
@@ -175,9 +172,8 @@ CREATE POLICY "用户只能查看自己的穿搭历史" ON outfit_history
 
 ## 后续优化建议
 
-1. 集成真实天气API
-2. 添加更复杂的穿搭推荐算法
-3. 支持穿搭评分和反馈
-4. 添加穿搭搭配预览功能
-5. 支持社交分享功能
-6. 添加季节性衣柜整理建议
+1. 添加更复杂的穿搭推荐算法
+2. 支持穿搭评分和反馈
+3. 添加穿搭搭配预览功能
+4. 支持社交分享功能
+5. 添加季节性衣柜整理建议

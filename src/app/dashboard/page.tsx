@@ -4,9 +4,9 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
-import { getWeatherByCity, getOneCallWeather } from '@/services/weatherService'
 import { getCreditCards, updateCreditCard as updateCreditCardService } from '@/services/creditCardService'
 import { getLoans, updateLoan as updateLoanService } from '@/services/loanService'
+
 
 // 优化功能卡片组件
 const FeatureCard = React.memo(({ 
@@ -278,54 +278,10 @@ export default function DashboardPage() {
   const { user, logout, loading } = useAuth()
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [weatherData, setWeatherData] = useState<any>(null)
-  const [fullWeatherData, setFullWeatherData] = useState<any>(null)
-  const [loadingWeather, setLoadingWeather] = useState(true)
-  const [showCityInput, setShowCityInput] = useState(false)
-  const [newCity, setNewCity] = useState('')
-  const [currentCity, setCurrentCity] = useState('Chiba')
-  const [weatherError, setWeatherError] = useState('')
   const [allCreditCards, setAllCreditCards] = useState<any[]>([])
   const [allLoans, setAllLoans] = useState<any[]>([])
   const [loadingPayments, setLoadingPayments] = useState(true)
   
-  // 根据天气条件生成穿衣建议
-  const getClothingRecommendation = (temperature: number, condition: string) => {
-    let recommendation = '';
-    
-    // 确保温度是有效数字
-    if (typeof temperature !== 'number' || isNaN(temperature)) {
-      return null;
-    }
-    
-    if (temperature < 5) {
-      recommendation = '极寒天气，建议穿羽绒服、厚毛衣、保暖内衣、围巾、手套和帽子。';
-    } else if (temperature < 10) {
-      recommendation = '寒冷天气，建议穿厚外套、毛衣、长裤和保暖鞋。';
-    } else if (temperature < 15) {
-      recommendation = '凉爽天气，建议穿夹克、薄毛衣、长裤和休闲鞋。';
-    } else if (temperature < 20) {
-      recommendation = '温和天气，建议穿薄外套、长袖衬衫、长裤或裙子。';
-    } else if (temperature < 25) {
-      recommendation = '温暖天气，建议穿短袖、薄长裤或裙子、凉鞋。';
-    } else if (temperature < 30) {
-      recommendation = '炎热天气，建议穿短袖、短裤、裙子、凉鞋或拖鞋。';
-    } else {
-      recommendation = '极热天气，建议穿轻薄透气的衣物，如短袖、背心、短裤，并做好防晒措施。';
-    }
-    
-    // 根据天气状况调整建议
-    if (condition && (condition.includes('雨') || condition.includes('雨'))) {
-      recommendation += ' 天气有雨，请携带雨伞或雨衣。';
-    } else if (condition && (condition.includes('雪') || condition.includes('雪'))) {
-      recommendation += ' 天气有雪，请注意防滑，穿防水鞋。';
-    } else if (condition && (condition.includes('风') || condition.includes('风'))) {
-      recommendation += ' 天气有风，请注意保暖，可穿防风外套。';
-    }
-    
-    return recommendation;
-  };
-
   // 优化功能卡片列表 - 提前定义，确保Hook顺序一致
   const featureCards = useMemo(() => {
     const cards = [
@@ -374,38 +330,6 @@ export default function DashboardPage() {
     return cards;
   }, [router])
 
-  // 获取天气数据
-  const fetchWeatherData = useCallback(async (city: string = currentCity) => {
-    try {
-      setLoadingWeather(true)
-      setWeatherError('')
-      
-      // 获取指定城市的天气数据
-      const weather = await getWeatherByCity(city)
-      
-      if (weather) {
-        setWeatherData(weather)
-        setCurrentCity(city)
-        
-        // 获取完整的天气预报数据
-        const fullWeather = await getOneCallWeather(weather.latitude, weather.longitude)
-        if (fullWeather) {
-          setFullWeatherData(fullWeather)
-        }
-      } else {
-        // 如果获取失败，显示错误信息
-        setWeatherData(null)
-        setWeatherError(`无法获取"${city}"的天气数据，请检查城市名称是否正确`)
-      }
-    } catch (error) {
-      console.error('获取天气数据失败:', error)
-      setWeatherData(null)
-      setWeatherError('获取天气数据时发生错误，请稍后重试')
-    } finally {
-      setLoadingWeather(false)
-    }
-  }, [currentCity])
-
   // 获取即将到期的信用卡还款
   const fetchUpcomingPayments = useCallback(async () => {
     if (!user) return
@@ -435,7 +359,6 @@ export default function DashboardPage() {
   // 获取天气数据和财务信息
   useEffect(() => {
     if (user) {
-      fetchWeatherData()
       fetchUpcomingPayments()
       
       // 添加事件监听器，当还款状态更新时重新获取数据
@@ -450,7 +373,7 @@ export default function DashboardPage() {
         window.removeEventListener('paymentUpdated', handlePaymentUpdate)
       }
     }
-  }, [user, fetchWeatherData, fetchUpcomingPayments])
+  }, [user, fetchUpcomingPayments])
 
   const handleLogout = useCallback(async () => {
     await logout()
@@ -487,84 +410,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  // 获取下雨时间信息
-  const getRainTimeInfo = () => {
-    if (!fullWeatherData || !fullWeatherData.hourly) return null;
-    
-    // 获取未来24小时的数据
-    const next24Hours = fullWeatherData.hourly.slice(0, 24);
-    
-    // 转换数据格式
-    const rainyHours = next24Hours.map((hour: any) => {
-      const date = new Date(hour.dt * 1000);
-      return {
-        time: date.getHours(),
-        pop: Math.round(hour.pop * 100)
-      };
-    });
-    
-    return rainyHours;
-  };
-
-  const rainInfo = getRainTimeInfo();
-
-  // 处理城市切换
-  const handleSwitchCity = () => {
-    if (newCity.trim() && newCity !== currentCity) {
-      fetchWeatherData(newCity.trim());
-      setNewCity('');
-      setShowCityInput(false);
-    }
-  };
-
-  // 处理回车键切换城市
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSwitchCity();
-    }
-  };
-
-  // 降雨概率图表组件
-  const RainChart = ({ rainData }: { rainData: { time: number; pop: number }[] }) => {
-    // 找到最高的降雨概率用于计算图表高度
-    const maxPop = Math.max(...rainData.map(data => data.pop), 100);
-    
-    return (
-      <div className="mt-3 w-full">
-        <h3 className="font-medium text-blue-800 text-sm mb-2">未来24小时降雨概率</h3>
-        <div className="weather-chart-container w-full overflow-x-auto force-scrollbar" style={{ 
-          WebkitOverflowScrolling: 'touch',
-          padding: '0 0 10px 0'
-        }}>
-          <div className="flex items-end h-24 gap-1" style={{ 
-            minWidth: 'max-content',
-            padding: '0 2px'
-          }}>
-            {rainData.map((data, index) => (
-              <div key={index} className="flex flex-col items-center flex-shrink-0" style={{
-                width: '40px'
-              }}>
-                {/* 用柱状图表示概率，不显示具体数字 */}
-                <div className="flex items-end justify-center w-full h-16 mb-1">
-                  <div 
-                    className={`w-full rounded-t transition-all duration-300 hover:bg-blue-500 ${
-                      data.pop > 30 ? 'bg-blue-400' : 'bg-blue-100'
-                    }`}
-                    style={{ height: `${Math.max((data.pop / maxPop) * 100, 5)}%` }}
-                  ></div>
-                </div>
-                <div className="text-blue-800 text-xs mt-1 whitespace-nowrap">{data.time}点</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mt-2 text-xs text-blue-600">
-          * 柱状图高度表示降雨概率，颜色深浅表示概率高低
-        </div>
-      </div>
-    );
-  };
 
   return (
     <ProtectedRoute>
@@ -628,6 +473,8 @@ export default function DashboardPage() {
 
         {/* 主内容区域 */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+          
           {/* 财务概览区域 */}
           {loadingPayments ? (
             <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6">
@@ -639,127 +486,6 @@ export default function DashboardPage() {
           ) : (
             <MonthlyRepaymentOverview creditCards={allCreditCards} loans={allLoans} />
           )}
-          
-          {/* 天气信息展示区域 */}
-          <div className="bg-cream-card rounded-xl shadow-sm p-5 border border-cream-border mb-6 dashboard-weather-card-padding">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-xl font-bold text-cream-text-dark">今日天气</h2>
-              <button 
-                onClick={() => setShowCityInput(!showCityInput)}
-                className="text-sm text-cream-accent hover:text-cream-accent-hover flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                更换城市
-              </button>
-            </div>
-            
-            {/* 城市切换输入框 */}
-            {showCityInput && (
-              <div className="mb-4 p-3 bg-cream-bg rounded-lg border border-cream-border">
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="请输入城市名称"
-                    className="flex-1 px-3 py-1.5 text-sm border border-cream-border rounded-l focus:outline-none focus:ring-1 focus:ring-cream-accent"
-                  />
-                  <button
-                    onClick={handleSwitchCity}
-                    className="px-3 py-1.5 bg-cream-accent hover:bg-cream-accent-hover text-white text-sm rounded-r transition duration-300"
-                  >
-                    切换
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            {loadingWeather ? (
-              <div className="flex justify-center items-center py-6">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cream-accent"></div>
-                <span className="ml-2 text-cream-text-dark">正在加载天气数据...</span>
-              </div>
-            ) : weatherError ? (
-              <div className="text-center py-4">
-                <div className="text-red-500 mb-2">{weatherError}</div>
-                <button
-                  onClick={() => fetchWeatherData()}
-                  className="text-sm text-cream-accent hover:text-cream-accent-hover"
-                >
-                  重新加载天气数据
-                </button>
-              </div>
-            ) : weatherData ? (
-              <div>
-                <div className="flex flex-col md:flex-row md:items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="text-4xl font-bold text-cream-text-dark">{Math.round(weatherData.temperature)}°C</div>
-                    <div className="ml-3">
-                      <div className="text-lg text-cream-text-dark">{weatherData.condition}</div>
-                      <div className="text-cream-text-light text-sm">
-                        {weatherData.city}
-                        {fullWeatherData?.current?.feels_like && (
-                          <span className="ml-2">体感 {fullWeatherData.current.feels_like.toFixed(1)}°C</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 md:mt-0 grid grid-cols-2 gap-3">
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-cream-text-light mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
-                      </svg>
-                      <span className="text-cream-text text-sm">湿度: {weatherData.humidity}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 text-cream-text-light mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      <span className="text-cream-text text-sm">风速: {weatherData.windSpeed} m/s</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* 穿衣推荐 */}
-                <div className="mt-4 p-4 bg-amber-50 rounded-md border border-amber-200">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
-                    </svg>
-                    <div className="w-full">
-                      <h3 className="font-medium text-amber-800 text-sm mb-1">今日穿搭推荐</h3>
-                      <p className="text-amber-700 text-sm">
-                        {getClothingRecommendation(weatherData.temperature, weatherData.condition)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* 下雨时间图表展示 */}
-                {rainInfo && rainInfo.length > 0 && (
-                  <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-200">
-                    <div className="flex items-start">
-                      <svg className="w-5 h-5 text-blue-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4 4 0 003 15z" />
-                      </svg>
-                      <div className="w-full overflow-hidden">
-                        <h3 className="font-medium text-blue-800 text-sm">降雨提醒</h3>
-                        <RainChart rainData={rainInfo} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-3 text-cream-text-dark text-sm">
-                无法获取天气数据
-              </div>
-            )}
-          </div>
           
           {/* 功能卡片区域 */}
           <div className="text-center py-6">

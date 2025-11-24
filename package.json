@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "@types/dom-speech-recognition": "^0.0.7",
     "@types/qrcode": "^1.5.5",
     "axios": "^1.12.2",
     "cheerio": "^1.1.2",
@@ -22,6 +23,7 @@
     "html5-qrcode": "^2.3.8",
     "next": "15.5.3",
     "node-fetch": "^3.3.2",
+    "openai": "^6.3.0",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-calendar": "^6.0.0",
