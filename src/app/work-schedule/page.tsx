@@ -30,6 +30,9 @@ const BackIcon = lazy(() => import('@/components/icons/BackIcon'))
 // 懒加载其他组件
 const ShopHourlyRates = lazy(() => import('@/components/ShopHourlyRates'))
 
+// 定义成员类型
+type Member = '小林' | '小王'
+
 export default function WorkSchedulePage() {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -37,17 +40,30 @@ export default function WorkSchedulePage() {
   const [shopRates, setShopRates] = useState<ShopHourlyRate[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<WorkSchedule | null>(null)
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewContent, setPreviewContent] = useState('');
-
+  
+  // 新增的状态用于工资设置
   const [showSalaryForm, setShowSalaryForm] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [memberSettings, setMemberSettings] = useState({
+    小王: {
+      monthlySalary: 0, // 月给
+      hourlyWage: 1100, // 时薪
+      overtimeRate: 1.0, // 加班费率（相对于正常时薪）
+    },
+    小林: {
+      monthlySalary: 0, // 月给
+      hourlyWage: 1300, // 时薪
+      overtimeRate: 1.0, // 加班费率（相对于正常时薪）
+    }
+  })
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [formData, setFormData] = useState({
     shop_name: '',
     work_date: new Date().toISOString().split('T')[0],
     start_time: '09:00',
-    end_time: '17:00',
-    break_duration: 0 // 休息时长，默认为0小时
+    end_time: '18:00',
+    break_duration: 1 // 午休1小时
   })
   const [salaryFormData, setSalaryFormData] = useState({
     shop_name: '',
@@ -173,8 +189,8 @@ export default function WorkSchedulePage() {
         shop_name: '',
         work_date: formatDateForComparison(new Date()),
         start_time: '09:00',
-        end_time: '17:00',
-        break_duration: 0
+        end_time: '18:00',
+        break_duration: 1
       })
       setShowForm(false)
     } catch (error) {
@@ -277,7 +293,7 @@ export default function WorkSchedulePage() {
       work_date: schedule.work_date,
       start_time: schedule.start_time,
       end_time: schedule.end_time,
-      break_duration: (schedule as any).break_duration || 0 // 默认休息时长为0
+      break_duration: (schedule as any).break_duration || 1 // 默认休息时长为1小时
     })
     setShowForm(true)
   }
@@ -298,546 +314,6 @@ export default function WorkSchedulePage() {
       }
     }
   }
-
-  // 获取一周的日期
-  const getWeekDates = (date: Date) => {
-    const week = []
-    const startDate = new Date(date)
-    startDate.setDate(startDate.getDate() - startDate.getDay() + (startDate.getDay() === 0 ? -6 : 1)) // 从周一开始
-    
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(startDate)
-      currentDate.setDate(startDate.getDate() + i)
-      week.push(currentDate)
-    }
-    
-    return week
-  }
-
-  // 导出周排班表为图片
-  const exportWeeklyScheduleAsImage = async () => {
-    try {
-      // 获取当前周的日期
-      const weekDates = getWeekDates(selectedDate);
-      
-      // 获取当前周的所有排班数据
-      const weekStart = new Date(weekDates[0]);
-      const weekEnd = new Date(weekDates[6]);
-      weekEnd.setHours(23, 59, 59, 999);
-      
-      const weekSchedules = schedules.filter(schedule => {
-        const scheduleDate = new Date(schedule.work_date);
-        return scheduleDate >= weekStart && scheduleDate <= weekEnd;
-      });
-      
-      // 获取本周所有店铺名称
-      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort();
-      
-      // 计算班次的白班和夜班工时，并考虑休息时间
-      const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
-        // 将时间转换为分钟数
-        const parseTimeToMinutes = (time: string): number => {
-          const [hours, minutes] = time.split(':').map(Number);
-          return hours * 60 + minutes;
-        };
-
-        let startMinutes = parseTimeToMinutes(startTime);
-        let endMinutes = parseTimeToMinutes(endTime);
-
-        // 处理跨天情况
-        if (endMinutes <= startMinutes) {
-          endMinutes += 24 * 60; // 加24小时
-        }
-
-        // 白班时间段：08:00-22:00 (480-1320分钟)
-        const dayShiftStart = 8 * 60;    // 08:00
-        const dayShiftEnd = 22 * 60;     // 22:00
-
-        let dayShiftMinutes = 0;
-        let nightShiftMinutes = 0;
-
-        // 计算与白班时间段的交集
-        const workStartInDayShift = Math.max(startMinutes, dayShiftStart);
-        const workEndInDayShift = Math.min(endMinutes, dayShiftEnd);
-            
-        if (workStartInDayShift < workEndInDayShift) {
-          dayShiftMinutes = workEndInDayShift - workStartInDayShift;
-        }
-
-        // 计算与夜班时间段的交集
-        // 夜班时间段：22:00-08:00，分为两部分：
-        // 1. 当天22:00-24:00 (1320-1440分钟)
-        const nightShiftStart1 = 22 * 60;  // 22:00
-        const nightShiftEnd1 = 24 * 60;    // 24:00
-        
-        const workStartInNightShift1 = Math.max(startMinutes, nightShiftStart1);
-        const workEndInNightShift1 = Math.min(endMinutes, nightShiftEnd1);
-        
-        if (workStartInNightShift1 < workEndInNightShift1) {
-          nightShiftMinutes += workEndInNightShift1 - workStartInNightShift1;
-        }
-        
-        // 2. 第二天00:00-08:00 (0-480分钟)
-        // 只有当工作时间跨天时才需要考虑这部分
-        if (endMinutes > 24 * 60) {
-          const nightShiftStart2 = 0;      // 00:00
-          const nightShiftEnd2 = 8 * 60;   // 08:00
-          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
-          
-          const workStartInNightShift2 = nightShiftStart2;
-          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
-          
-          if (workStartInNightShift2 < workEndInNightShift2) {
-            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
-          }
-        }
-      
-        // 如果工作时间从夜班开始（早于08:00），也需要考虑第二天的夜班部分
-        if (startMinutes < 8 * 60 && endMinutes > 24 * 60) {
-          const nightShiftStart2 = 0;      // 00:00
-          const nightShiftEnd2 = 8 * 60;   // 08:00
-          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
-          
-          const workStartInNightShift2 = nightShiftStart2;
-          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
-          
-          if (workStartInNightShift2 < workEndInNightShift2) {
-            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
-          }
-        }
-        
-        // 修正：如果工作时间完全在白班时间段内，则没有夜班时间
-        if (startMinutes >= dayShiftStart && endMinutes <= dayShiftEnd) {
-          nightShiftMinutes = 0;
-        }
-        
-        // 修正：如果工作时间完全在夜班时间段内（第一天の夜班22:00-24:00），则没有白班時間
-        if (startMinutes >= nightShiftStart1 && endMinutes <= nightShiftEnd1) {
-          dayShiftMinutes = 0;
-        }
-        
-        // 修正：如果工作时间完全在夜班时间段内（第二天の夜班00:00-08:00），则没有白班時間
-        if (endMinutes > 24 * 60 && startMinutes >= 24 * 60 && (endMinutes - 24 * 60) <= 8 * 60) {
-          const adjustedStartMinutes = startMinutes - 24 * 60;
-          const adjustedEndMinutes = endMinutes - 24 * 60;
-          if (adjustedStartMinutes >= 0 && adjustedEndMinutes <= 8 * 60) {
-            dayShiftMinutes = 0;
-          }
-        }
-
-        // 将分钟转换为小时
-        let dayShiftHours = dayShiftMinutes / 60;
-        let nightShiftHours = nightShiftMinutes / 60;
-
-        // 考虑休息时长的影响
-        if (breakDuration > 0) {
-          // 优先从白班工时中扣除休息时间
-          if (dayShiftHours >= breakDuration) {
-            // 如果白班工时足够扣除休息时间
-            dayShiftHours -= breakDuration;
-          } else {
-            // 如果白班工时不够扣除休息时间
-            // 先扣除所有白班工时
-            const remainingBreak = breakDuration - dayShiftHours;
-            dayShiftHours = 0;
-            
-            // 剩余的休息时间从夜班工时中扣除
-            nightShiftHours = Math.max(0, nightShiftHours - remainingBreak);
-          }
-        }
-
-        return {
-          dayShiftHours: dayShiftHours,
-          nightShiftHours: nightShiftHours
-        };
-      };
-      
-      // 计算单个排班的预计工资
-      const calculateScheduleSalary = (schedule: WorkSchedule) => {
-        const shopRate = shopRates.find(rate => rate.shop_name === schedule.shop_name);
-        const dayShiftRate = shopRate ? shopRate.day_shift_rate : 0;
-        const nightShiftRate = shopRate ? shopRate.night_shift_rate : 0;
-        
-        const breakDuration = (schedule as any).break_duration || 0;
-        const shiftHours = calculateShiftHours(schedule.start_time, schedule.end_time, breakDuration);
-        const dayShiftHours = shiftHours.dayShiftHours;
-        const nightShiftHours = shiftHours.nightShiftHours;
-        
-        const totalSalary = dayShiftHours * dayShiftRate + nightShiftHours * nightShiftRate;
-        return Math.round(totalSalary);
-      };
-      
-      // 计算本周总工资和总休息时长
-      let totalWeeklySalary = 0;
-      let totalWeeklyBreakHours = 0;
-      
-      weekSchedules.forEach(schedule => {
-        const salary = calculateScheduleSalary(schedule);
-        totalWeeklySalary += salary;
-        totalWeeklyBreakHours += (schedule as any).break_duration || 0;
-      });
-      
-      // 创建用于导出的隐藏表格元素
-      const exportContainer = document.createElement('div');
-      exportContainer.style.position = 'absolute';
-      exportContainer.style.left = '-9999px';
-      exportContainer.style.zIndex = '-1';
-      exportContainer.style.backgroundColor = '#f8f1eb';
-      exportContainer.style.padding = '30px';
-      exportContainer.style.fontFamily = 'Arial, sans-serif';
-      exportContainer.style.width = '1400px';
-      
-      // 构建表格HTML - 按照新要求重新设计
-      let tableHTML = `
-        <div style="background-color: #f8f1eb; padding: 30px; font-family: Arial, sans-serif; width: 1400px; border-radius: 15px;">
-          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 32px; font-weight: bold;">周排班表</h2>
-          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 20px;">
-            <thead>
-              <tr style="background-color: #a89383; color: white;">
-                <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">店铺情報</th>
-      `;
-      
-      // 添加日期表头（星期）
-      weekDates.forEach(date => {
-        const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-        tableHTML += `
-          <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">
-            ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
-          </th>
-        `;
-      });
-      
-      tableHTML += `
-            </tr>
-            </thead>
-            <tbody>
-      `;
-      
-      // 为每个店铺添加一行
-      shopNames.forEach((shopName, shopIndex) => {
-        // 交替行背景色
-        const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
-        
-        tableHTML += `<tr style="border-bottom: 2px solid #d4c8c2; background-color: ${rowBgColor};">
-          <td style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">${shopName}</td>`;
-        
-        // 为每个日期添加排班信息
-        weekDates.forEach(date => {
-          const dateStr = formatDateForComparison(date);
-          const schedulesForDate = weekSchedules.filter(schedule => 
-            schedule.work_date === dateStr && schedule.shop_name === shopName
-          );
-          
-          if (schedulesForDate.length > 0) {
-            // 只取第一个排班（通常一个店铺一天只有一个班次）
-            const schedule = schedulesForDate[0];
-            tableHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #5d504b;">
-              ${schedule.start_time}<br/>${schedule.end_time}
-            </td>`;
-          } else {
-            tableHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #a89383;">
-              休息
-            </td>`;
-          }
-        });
-        
-        tableHTML += `</tr>`;
-      });
-      
-      // 添加总计信息（本周预计总工资和本周休息时长）
-      tableHTML += `
-            </tbody>
-          </table>
-          <div style="margin-top: 30px; padding: 25px; background-color: #a89383; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: right;">
-            <div style="display: inline-block; text-align: left;">
-              <div style="font-weight: bold; color: white; font-size: 24px; margin-bottom: 15px;">
-                <span>本周预计总工资:</span>
-                <span style="margin-left: 20px;">${totalWeeklySalary} 日元</span>
-              </div>
-              <div style="font-weight: bold; color: white; font-size: 24px;">
-                <span>本周休息时长:</span>
-                <span style="margin-left: 20px;">${totalWeeklyBreakHours.toFixed(1)} 小时</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      exportContainer.innerHTML = tableHTML;
-      document.body.appendChild(exportContainer);
-      
-      // 使用html2canvas将表格转换为图片
-      const canvas = await html2canvas(exportContainer, {
-        scale: 2, // 提高图片质量
-        useCORS: true,
-        backgroundColor: '#f8f1eb',
-        logging: false, // 禁用日志以提高性能
-        allowTaint: true
-      });
-      
-      // 移除临时元素
-      document.body.removeChild(exportContainer);
-      
-      // 创建下载链接
-      const link = document.createElement('a');
-      const fileName = `周排班表_${weekDates[0].getFullYear()}年${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日_至_${weekDates[6].getFullYear()}年${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日.png`;
-      link.download = fileName;
-      link.href = canvas.toDataURL('image/png', 1.0); // 使用最高质量
-      link.click();
-      
-    } catch (error) {
-      console.error('导出周排班表图片失败:', error);
-      alert('导出周排班表图片失败: ' + (error instanceof Error ? error.message : '未知错误'));
-    }
-  };
-
-  // 预览周排班表
-  const previewWeeklySchedule = async () => {
-    try {
-      // 获取当前周的日期
-      const weekDates = getWeekDates(selectedDate);
-      
-      // 获取当前周的所有排班数据
-      const weekStart = new Date(weekDates[0]);
-      const weekEnd = new Date(weekDates[6]);
-      weekEnd.setHours(23, 59, 59, 999);
-      
-      const weekSchedules = schedules.filter(schedule => {
-        const scheduleDate = new Date(schedule.work_date);
-        return scheduleDate >= weekStart && scheduleDate <= weekEnd;
-      });
-      
-      // 获取本周所有店铺名称
-      const shopNames = Array.from(new Set(weekSchedules.map(schedule => schedule.shop_name))).sort();
-      
-      // 计算班次的白班和夜班工时，并考虑休息时间
-      const calculateShiftHours = (startTime: string, endTime: string, breakDuration: number = 0) => {
-        // 将时间转换为分钟数
-        const parseTimeToMinutes = (time: string): number => {
-          const [hours, minutes] = time.split(':').map(Number);
-          return hours * 60 + minutes;
-        };
-
-        let startMinutes = parseTimeToMinutes(startTime);
-        let endMinutes = parseTimeToMinutes(endTime);
-
-        // 处理跨天情况
-        if (endMinutes <= startMinutes) {
-          endMinutes += 24 * 60; // 加24小时
-        }
-
-        // 白班时间段：08:00-22:00 (480-1320分钟)
-        const dayShiftStart = 8 * 60;    // 08:00
-        const dayShiftEnd = 22 * 60;     // 22:00
-
-        let dayShiftMinutes = 0;
-        let nightShiftMinutes = 0;
-
-        // 计算与白班时间段的交集
-        const workStartInDayShift = Math.max(startMinutes, dayShiftStart);
-        const workEndInDayShift = Math.min(endMinutes, dayShiftEnd);
-            
-        if (workStartInDayShift < workEndInDayShift) {
-          dayShiftMinutes = workEndInDayShift - workStartInDayShift;
-        }
-
-        // 计算与夜班时间段的交集
-        // 夜班时间段：22:00-08:00，分为两部分：
-        // 1. 当天22:00-24:00 (1320-1440分钟)
-        const nightShiftStart1 = 22 * 60;  // 22:00
-        const nightShiftEnd1 = 24 * 60;    // 24:00
-        
-        const workStartInNightShift1 = Math.max(startMinutes, nightShiftStart1);
-        const workEndInNightShift1 = Math.min(endMinutes, nightShiftEnd1);
-        
-        if (workStartInNightShift1 < workEndInNightShift1) {
-          nightShiftMinutes += workEndInNightShift1 - workStartInNightShift1;
-        }
-        
-        // 2. 第二天00:00-08:00 (0-480分钟)
-        // 只有当工作时间跨天时才需要考虑这部分
-        if (endMinutes > 24 * 60) {
-          const nightShiftStart2 = 0;      // 00:00
-          const nightShiftEnd2 = 8 * 60;   // 08:00
-          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
-          
-          const workStartInNightShift2 = nightShiftStart2;
-          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
-          
-          if (workStartInNightShift2 < workEndInNightShift2) {
-            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
-          }
-        }
-      
-        // 如果工作时间从夜班开始（早于08:00），也需要考虑第二天的夜班部分
-        if (startMinutes < 8 * 60 && endMinutes > 24 * 60) {
-          const nightShiftStart2 = 0;      // 00:00
-          const nightShiftEnd2 = 8 * 60;   // 08:00
-          const adjustedEndMinutes = endMinutes - 24 * 60; // 调整到第二天的时间
-          
-          const workStartInNightShift2 = nightShiftStart2;
-          const workEndInNightShift2 = Math.min(adjustedEndMinutes, nightShiftEnd2);
-          
-          if (workStartInNightShift2 < workEndInNightShift2) {
-            nightShiftMinutes += workEndInNightShift2 - workStartInNightShift2;
-          }
-        }
-        
-        // 修正：如果工作时间完全在白班时间段内，则没有夜班时间
-        if (startMinutes >= dayShiftStart && endMinutes <= dayShiftEnd) {
-          nightShiftMinutes = 0;
-        }
-        
-        // 修正：如果工作时间完全在夜班时间段内（第一天の夜班22:00-24:00），则没有白班時間
-        if (startMinutes >= nightShiftStart1 && endMinutes <= nightShiftEnd1) {
-          dayShiftMinutes = 0;
-        }
-        
-        // 修正：如果工作时间完全在夜班时间段内（第二天の夜班00:00-08:00），则没有白班時間
-        if (endMinutes > 24 * 60 && startMinutes >= 24 * 60 && (endMinutes - 24 * 60) <= 8 * 60) {
-          const adjustedStartMinutes = startMinutes - 24 * 60;
-          const adjustedEndMinutes = endMinutes - 24 * 60;
-          if (adjustedStartMinutes >= 0 && adjustedEndMinutes <= 8 * 60) {
-            dayShiftMinutes = 0;
-          }
-        }
-
-        // 将分钟转换为小时
-        let dayShiftHours = dayShiftMinutes / 60;
-        let nightShiftHours = nightShiftMinutes / 60;
-
-        // 考虑休息时长的影响
-        if (breakDuration > 0) {
-          // 优先从白班工时中扣除休息时间
-          if (dayShiftHours >= breakDuration) {
-            // 如果白班工时足够扣除休息时间
-            dayShiftHours -= breakDuration;
-          } else {
-            // 如果白班工时不够扣除休息时间
-            // 先扣除所有白班工时
-            const remainingBreak = breakDuration - dayShiftHours;
-            dayShiftHours = 0;
-            
-            // 剩余的休息时间从夜班工时中扣除
-            nightShiftHours = Math.max(0, nightShiftHours - remainingBreak);
-          }
-        }
-
-        return {
-          dayShiftHours: dayShiftHours,
-          nightShiftHours: nightShiftHours
-        };
-      };
-      
-      // 计算单个排班的预计工资
-      const calculateScheduleSalary = (schedule: WorkSchedule) => {
-        const shopRate = shopRates.find(rate => rate.shop_name === schedule.shop_name);
-        const dayShiftRate = shopRate ? shopRate.day_shift_rate : 0;
-        const nightShiftRate = shopRate ? shopRate.night_shift_rate : 0;
-        
-        const breakDuration = (schedule as any).break_duration || 0;
-        const shiftHours = calculateShiftHours(schedule.start_time, schedule.end_time, breakDuration);
-        const dayShiftHours = shiftHours.dayShiftHours;
-        const nightShiftHours = shiftHours.nightShiftHours;
-        
-        const totalSalary = dayShiftHours * dayShiftRate + nightShiftHours * nightShiftRate;
-        return Math.round(totalSalary);
-      };
-      
-      // 计算本周总工资和总休息时长
-      let totalWeeklySalary = 0;
-      let totalWeeklyBreakHours = 0;
-      
-      weekSchedules.forEach(schedule => {
-        const salary = calculateScheduleSalary(schedule);
-        totalWeeklySalary += salary;
-        totalWeeklyBreakHours += (schedule as any).break_duration || 0;
-      });
-      
-      // 创建预览HTML - 按照新要求重新设计
-      let previewHTML = `
-        <div style="background-color: #f8f1eb; padding: 30px; font-family: Arial, sans-serif; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 15px;">
-          <h2 style="text-align: center; color: #5d504b; margin-bottom: 25px; font-size: 32px; font-weight: bold;">周排班表预览</h2>
-          <table style="width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 20px;">
-            <thead>
-              <tr style="background-color: #a89383; color: white;">
-                <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">店铺情報</th>
-      `;
-      
-      // 添加日期表头（星期）
-      weekDates.forEach(date => {
-        const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-        previewHTML += `
-          <th style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">
-            ${weekday}<br/>${date.getMonth() + 1}/${date.getDate()}
-          </th>
-        `;
-      });
-      
-      previewHTML += `
-            </tr>
-            </thead>
-            <tbody>
-      `;
-      
-      // 为每个店铺添加一行
-      shopNames.forEach((shopName, shopIndex) => {
-        // 交替行背景色
-        const rowBgColor = shopIndex % 2 === 0 ? '#ffffff' : '#f9f5f3';
-        
-        previewHTML += `<tr style="border-bottom: 2px solid #d4c8c2; background-color: ${rowBgColor};">
-          <td style="padding: 20px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 22px;">${shopName}</td>`;
-        
-        // 为每个日期添加排班信息
-        weekDates.forEach(date => {
-          const dateStr = formatDateForComparison(date);
-          const schedulesForDate = weekSchedules.filter(schedule => 
-            schedule.work_date === dateStr && schedule.shop_name === shopName
-          );
-          
-          if (schedulesForDate.length > 0) {
-            // 只取第一个排班（通常一个店铺一天只有一个班次）
-            const schedule = schedulesForDate[0];
-            previewHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #5d504b;">
-              ${schedule.start_time}<br/>${schedule.end_time}
-            </td>`;
-          } else {
-            previewHTML += `<td style="padding: 15px; text-align: center; border: 2px solid #d4c8c2; font-weight: bold; font-size: 20px; color: #a89383;">
-              休息
-            </td>`;
-          }
-        });
-        
-        previewHTML += `</tr>`;
-      });
-      
-      // 添加总计信息（本周预计总工资和本周休息时长）
-      previewHTML += `
-            </tbody>
-          </table>
-          <div style="margin-top: 30px; padding: 25px; background-color: #a89383; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: right;">
-            <div style="display: inline-block; text-align: left;">
-              <div style="font-weight: bold; color: white; font-size: 24px; margin-bottom: 15px;">
-                <span>本周预计总工资:</span>
-                <span style="margin-left: 20px;">${totalWeeklySalary} 日元</span>
-              </div>
-              <div style="font-weight: bold; color: white; font-size: 24px;">
-                <span>本周休息时长:</span>
-                <span style="margin-left: 20px;">${totalWeeklyBreakHours.toFixed(1)} 小时</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      setPreviewContent(previewHTML);
-      setShowPreview(true);
-      
-    } catch (error) {
-      console.error('预览周排班表失败:', error);
-      alert('预览周排班表失败: ' + (error instanceof Error ? error.message : '未知错误'));
-    }
-  };
 
   // 获取当前月份的排班数据
   const currentMonthSchedules = useMemo(() => {
@@ -1173,13 +649,6 @@ export default function WorkSchedulePage() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={previewWeeklySchedule}
-                  className="px-3 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
-                  aria-label="预览周排班表"
-                >
-                  预览周排班
-                </button>
-                <button
                   onClick={() => setShowSalaryForm(true)}
                   className="px-3 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
                   aria-label="工资设置"
@@ -1323,8 +792,8 @@ export default function WorkSchedulePage() {
                       shop_name: '',
                       work_date: formatDateForComparison(new Date()),
                       start_time: '09:00',
-                      end_time: '17:00',
-                      break_duration: 0
+                      end_time: '18:00',
+                      break_duration: 1
                     })
                   }}
                   className="text-cream-text-light hover:text-cream-text mobile-optimized hover-effect"
@@ -1434,8 +903,8 @@ export default function WorkSchedulePage() {
                         shop_name: '',
                         work_date: formatDateForComparison(new Date()),
                         start_time: '09:00',
-                        end_time: '17:00',
-                        break_duration: 0
+                        end_time: '18:00',
+                        break_duration: 1
                       })
                     }}
                     className="px-4 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
@@ -1455,35 +924,6 @@ export default function WorkSchedulePage() {
           </div>
         )}
 
-        {/* 预览模态框 */}
-        {showPreview && (
-          <div className="fixed inset-0 bg-cream-bg bg-opacity-80 flex justify-center items-center p-4 z-50 modal-backdrop">
-            <div className="bg-cream-card rounded-2xl shadow-lg p-6 w-full max-w-4xl border border-cream-border modal-fullscreen-mobile optimize-animation">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-cream-text-dark">排班表预览</h2>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={exportWeeklyScheduleAsImage}
-                    className="px-4 py-2 text-sm font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded-lg transition duration-300 mobile-optimized hover-effect"
-                  >
-                    导出为图片
-                  </button>
-                  <button
-                    onClick={() => setShowPreview(false)}
-                    className="text-cream-text-light hover:text-cream-text mobile-optimized hover-effect"
-                    aria-label="关闭预览"
-                  >
-                    <Suspense fallback={<span className="h-6 w-6" />}>
-                      <CloseIcon className="h-6 w-6" ariaHidden={false} />
-                    </Suspense>
-                  </button>
-                </div>
-              </div>
-              <div dangerouslySetInnerHTML={{ __html: previewContent }} />
-            </div>
-          </div>
-        )}
-
         {/* 工资设置表单模态框 */}
         {showSalaryForm && (
           <div className="fixed inset-0 bg-cream-bg bg-opacity-80 flex justify-center p-4 z-50 modal-backdrop" style={{ alignItems: 'flex-start', paddingTop: '80px' }}>
@@ -1493,6 +933,7 @@ export default function WorkSchedulePage() {
                 <button
                   onClick={() => {
                     setShowSalaryForm(false)
+                    setSelectedMember(null)
                     setSalaryFormData({
                       shop_name: '',
                       day_shift_rate: '',
@@ -1508,106 +949,152 @@ export default function WorkSchedulePage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSalarySubmit} className="space-y-4">
+              {/* 成员选择 */}
+              {!selectedMember ? (
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-cream-text-dark mb-2">选择成员</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setSelectedMember('小王')}
+                      className="px-4 py-3 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
+                    >
+                      小王
+                    </button>
+                    <button
+                      onClick={() => setSelectedMember('小林')}
+                      className="px-4 py-3 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
+                    >
+                      小林
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <div>
-                  <h3 className="text-md font-medium text-cream-text-dark mb-2">店铺时薪设置</h3>
-                  <div>
-                    <label htmlFor="salary_shop_name" className="block text-sm font-medium text-cream-text-dark mb-2">
-                      店铺名称 *
-                    </label>
-                    <input
-                      id="salary_shop_name"
-                      name="shop_name"
-                      type="text"
-                      value={salaryFormData.shop_name}
-                      onChange={handleSalaryInputChange}
-                      className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
-                      placeholder="请输入店铺名称"
-                    />
+                  <div className="flex items-center mb-4">
+                    <button
+                      onClick={() => setSelectedMember(null)}
+                      className="text-cream-text-light hover:text-cream-text mr-2 mobile-optimized hover-effect"
+                      aria-label="返回成员选择"
+                    >
+                      ←
+                    </button>
+                    <h3 className="text-md font-medium text-cream-text-dark">
+                      {selectedMember}的工资设置
+                    </h3>
                   </div>
 
-                  <div>
-                    <label htmlFor="day_shift_rate" className="block text-sm font-medium text-cream-text-dark mb-2">
-                      白班时薪 (8:00-22:00) *
-                    </label>
-                    <input
-                      id="day_shift_rate"
-                      name="day_shift_rate"
-                      type="number"
-                      step="1"
-                      value={salaryFormData.day_shift_rate}
-                      onChange={handleSalaryInputChange}
-                      className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
-                      placeholder="请输入白班时薪"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="night_shift_rate" className="block text-sm font-medium text-cream-text-dark mb-2">
-                      夜班时薪 (22:00-8:00) *
-                    </label>
-                    <input
-                      id="night_shift_rate"
-                      name="night_shift_rate"
-                      type="number"
-                      step="1"
-                      value={salaryFormData.night_shift_rate}
-                      onChange={handleSalaryInputChange}
-                      className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
-                      placeholder="请输入夜班时薪"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSalaryForm(false)
-                      setSalaryFormData({
-                        shop_name: '',
-                        day_shift_rate: '',
-                        night_shift_rate: ''
-                      })
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded-lg transition duration-300 mobile-optimized hover-effect"
-                  >
-                    保存
-                  </button>
-                </div>
-              </form>
-
-              {shopRates.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-cream-text-dark mb-2">已设置的店铺时薪</h3>
-                  <div className="space-y-3">
-                    {shopRates.map(rate => (
-                      <div key={rate.id} className="p-3 bg-cream-bg rounded-lg flex justify-between items-start">
-                        <div>
-                          <div className="font-medium text-cream-text-dark">{rate.shop_name}</div>
-                          <div className="text-sm text-cream-text mt-1">
-                            <p>白班时薪: {Math.round(rate.day_shift_rate)}日元/小时</p>
-                            <p>夜班时薪: {Math.round(rate.night_shift_rate)}日元/小时</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteShopRate(rate.id, rate.shop_name)}
-                          className="text-red-500 hover:text-red-700 flex items-center mobile-optimized hover-effect"
-                          aria-label={`删除${rate.shop_name}的时薪设置`}
-                        >
-                          <Suspense fallback={<span className="h-5 w-5" />}>
-                            <DeleteIcon className="h-5 w-5" ariaHidden={false} />
-                          </Suspense>
-                        </button>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    // 保存设置逻辑
+                    alert(`${selectedMember}的设置已保存`);
+                    setShowSalaryForm(false);
+                    setSelectedMember(null);
+                  }} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-cream-text-dark mb-2">
+                        {selectedMember === '小王' ? '月给' : '时薪'}
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedMember === '小王' ? memberSettings.小王.monthlySalary : memberSettings.小林.hourlyWage}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          setMemberSettings(prev => ({
+                            ...prev,
+                            [selectedMember]: {
+                              ...prev[selectedMember],
+                              ...(selectedMember === '小王' ? { monthlySalary: value } : { hourlyWage: value })
+                            }
+                          }));
+                        }}
+                        className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
+                        placeholder={selectedMember === '小王' ? '请输入月给金额' : '请输入时薪金额'}
+                      />
+                      <div className="text-xs text-cream-text-light mt-1">
+                        {selectedMember === '小王' ? '小王有月给，每周一到周六正常8小时工作' : '小林只有时薪'}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+
+                    {selectedMember === '小王' && (
+                      <div>
+                        <label className="block text-sm font-medium text-cream-text-dark mb-2">
+                          加班费率
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={memberSettings.小王.overtimeRate}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            setMemberSettings(prev => ({
+                              ...prev,
+                              小王: {
+                                ...prev.小王,
+                                overtimeRate: value
+                              }
+                            }));
+                          }}
+                          className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
+                          placeholder="请输入加班费率"
+                        />
+                        <div className="text-xs text-cream-text-light mt-1">
+                          加班费率相对于正常时薪的比例（如1.0表示相同，1.5表示1.5倍）
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedMember === '小林' && (
+                      <div>
+                        <label className="block text-sm font-medium text-cream-text-dark mb-2">
+                          加班费率
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={memberSettings.小林.overtimeRate}
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value) || 0;
+                            setMemberSettings(prev => ({
+                              ...prev,
+                              小林: {
+                                ...prev.小林,
+                                overtimeRate: value
+                              }
+                            }));
+                          }}
+                          className="w-full px-4 py-3 rounded-xl border border-cream-border focus:outline-none focus:ring-2 focus:ring-cream-accent focus:border-transparent bg-cream-input text-cream-text mobile-optimized form-input"
+                          placeholder="请输入加班费率"
+                        />
+                        <div className="text-xs text-cream-text-light mt-1">
+                          加班费率相对于正常时薪的比例（如1.0表示相同，1.5表示1.5倍）
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSalaryForm(false)
+                          setSelectedMember(null)
+                          setSalaryFormData({
+                            shop_name: '',
+                            day_shift_rate: '',
+                            night_shift_rate: ''
+                          })
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-cream-text-dark bg-cream-border hover:bg-cream-bg rounded-lg transition duration-300 mobile-optimized hover-effect"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 text-sm font-medium text-white bg-cream-accent hover:bg-cream-accent-hover rounded-lg transition duration-300 mobile-optimized hover-effect"
+                      >
+                        保存
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>
