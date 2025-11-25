@@ -15,9 +15,7 @@
 2. **user_profiles** - 用户个人资料表
 3. **work_schedules** - 工作排班表
 4. **shop_hourly_rates** - 店铺时薪表
-5. **shopping_items** - 购物清单表
 6. **products** - 商品表
-7. **shopping_carts** - 购物车表
 8. **cart_items** - 购物车项表
 9. **orders** - 订单表
 10. **order_items** - 订单项表
@@ -117,9 +115,7 @@ CREATE TABLE shop_hourly_rates (
 );
 ```
 
-#### shopping_items (购物清单表)
 ```sql
-CREATE TABLE shopping_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name VARCHAR(255) NOT NULL,

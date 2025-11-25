@@ -19,7 +19,6 @@
 - 描述: 在排班表中添加休息时长字段，用于更精确的工时计算
 
 ### 迁移 004: 创建购物清单表
-- 文件: `supabase/migrations/004_create_shopping_items_table.sql`
 - 描述: 创建购物清单表，支持居家购物功能
 
 ## 执行迁移
